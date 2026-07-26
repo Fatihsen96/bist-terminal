@@ -314,4 +314,4 @@ export default function App() {
       />
     </div>
   );
-}
+}const [lang, setLang] = useState<'en' | 'tr'>('tr'); // Varsayılan dil Türkçe

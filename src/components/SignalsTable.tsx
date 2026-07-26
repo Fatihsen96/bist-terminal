@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StockItem } from '../types';
-import { Download, ChevronLeft, ChevronRight, ArrowUpDown, Sparkles } from 'lucide-react';
+import { Download, ArrowUpDown, Sparkles } from 'lucide-react';
 
 interface SignalsTableProps {
   stocks: StockItem[];
@@ -15,13 +15,10 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
   onSelectStock,
   onOpenDetailModal,
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<'valueScore' | 'upside' | 'symbol'>('valueScore');
   const [sortAsc, setSortAsc] = useState(false);
 
-  const itemsPerPage = 6;
-
-  // Sorting logic
+  // Sorting logic (Tüm hisseler sıralanır)
   const sortedStocks = [...stocks].sort((a, b) => {
     let aVal = a[sortField];
     let bVal = b[sortField];
@@ -33,10 +30,6 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
     }
     return sortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
   });
-
-  const totalPages = Math.ceil(sortedStocks.length / itemsPerPage) || 1;
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedStocks = sortedStocks.slice(startIndex, startIndex + itemsPerPage);
 
   const handleSort = (field: 'valueScore' | 'upside' | 'symbol') => {
     if (sortField === field) {
@@ -78,11 +71,11 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
   return (
     <div className="glass-panel rounded-xl overflow-hidden flex flex-col h-full border border-[#1f1f2e]">
       {/* Table Header Controls */}
-      <div className="p-4 border-b border-[#1f1f2e] flex justify-between items-center bg-[#101017]/60">
+      <div className="p-4 border-b border-[#1f1f2e] flex justify-between items-center bg-[#101017]/60 shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[#38bdf8]" />
           <h3 className="font-headline font-bold text-xs uppercase tracking-widest text-[#38bdf8]">
-            Top Valuation Signals
+            Top Valuation Signals ({sortedStocks.length} Assets)
           </h3>
         </div>
         <div className="flex gap-2">
@@ -96,11 +89,11 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
         </div>
       </div>
 
-      {/* Table Body */}
-      <div className="overflow-x-auto flex-1">
+      {/* Table Body - Sadece burası kaydırılacak (Scrollable Container) */}
+      <div className="max-h-[72vh] overflow-y-auto custom-scrollbar flex-1">
         <table className="w-full text-left border-collapse select-none">
-          <thead>
-            <tr className="border-b border-[#1f1f2e] bg-[#0a0f12]">
+          <thead className="sticky top-0 bg-[#0a0f12] z-10">
+            <tr className="border-b border-[#1f1f2e]">
               <th
                 onClick={() => handleSort('symbol')}
                 className="p-3 text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider cursor-pointer hover:text-[#dee3e8]"
@@ -134,14 +127,14 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1f1f2e]/60">
-            {paginatedStocks.length === 0 ? (
+            {sortedStocks.length === 0 ? (
               <tr>
                 <td colSpan={5} className="p-8 text-center text-xs text-[#94a3b8]">
                   No matching assets found for selected filters. Try lowering the valuation range or clearing filters.
                 </td>
               </tr>
             ) : (
-              paginatedStocks.map((stock) => {
+              sortedStocks.map((stock) => {
                 const isSelected = selectedStock?.id === stock.id;
                 return (
                   <tr
@@ -215,46 +208,6 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Pagination Footer */}
-      <div className="p-3 border-t border-[#1f1f2e] flex justify-between items-center text-xs text-[#94a3b8] bg-[#0a0f12]">
-        <span className="text-[11px] font-mono">
-          Showing {sortedStocks.length > 0 ? startIndex + 1 : 0}-
-          {Math.min(startIndex + itemsPerPage, sortedStocks.length)} of {sortedStocks.length} assets
-        </span>
-
-        <div className="flex gap-1">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-            className="w-7 h-7 flex items-center justify-center rounded border border-[#1f1f2e] hover:bg-[#1f1f2e] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4 text-[#bdc8d1]" />
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`w-7 h-7 flex items-center justify-center rounded text-xs font-mono font-bold cursor-pointer transition-colors ${
-                currentPage === page
-                  ? 'border border-[#38bdf8] bg-[#38bdf8]/15 text-[#38bdf8]'
-                  : 'border border-[#1f1f2e] hover:bg-[#1f1f2e] text-[#bdc8d1]'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages || totalPages === 0}
-            className="w-7 h-7 flex items-center justify-center rounded border border-[#1f1f2e] hover:bg-[#1f1f2e] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-          >
-            <ChevronRight className="w-4 h-4 text-[#bdc8d1]" />
-          </button>
-        </div>
       </div>
     </div>
   );

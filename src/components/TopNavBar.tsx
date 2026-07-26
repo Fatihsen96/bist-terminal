@@ -6,7 +6,7 @@ import {
   PlusCircle, 
   ArrowLeftRight, 
   Sparkles,
-  Check,
+  Globe,
   X
 } from 'lucide-react';
 
@@ -18,6 +18,8 @@ interface TopNavBarProps {
   onOpenDeposit: () => void;
   onOpenTrade: () => void;
   notificationCount: number;
+  currentLang: 'en' | 'tr';
+  setLang: (lang: 'en' | 'tr') => void;
 }
 
 export const TopNavBar: React.FC<TopNavBarProps> = ({
@@ -28,9 +30,13 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
   onOpenDeposit,
   onOpenTrade,
   notificationCount,
+  currentLang,
+  setLang,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  const markets: MarketCategory[] = ['BIST', 'US Markets', 'Crypto', 'Forex'];
+  
+  // Kripto ve Forex tamamen kaldırıldı, sadece BIST ve US Markets kaldı
+  const markets: MarketCategory[] = ['BIST', 'US Markets'];
 
   const sampleNotifications = [
     { id: '1', title: 'META Signal Alert', text: 'Strong Buy score upgraded to 92 based on Q2 free cash flow metrics.', time: '12m ago', unread: true },
@@ -49,7 +55,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           </span>
         </div>
 
-        {/* Market Category Tabs */}
+        {/* Market Category Tabs (Sadece BIST ve US Markets) */}
         <div className="flex items-center gap-1 bg-[#101017] p-1 rounded-lg border border-[#1f1f2e]">
           {markets.map((m) => {
             const isActive = selectedMarket === m;
@@ -77,7 +83,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={`Search ${selectedMarket} tickers (e.g. META, THYAO, BTC)...`}
+          placeholder={currentLang === 'tr' ? `${selectedMarket} hisselerini ara (örn: THYAO, NVDA)...` : `Search ${selectedMarket} tickers (e.g. META, THYAO)...`}
           className="w-full pl-9 pr-3 py-1.5 bg-[#070709] border border-[#1f1f2e] rounded-lg text-xs text-[#dee3e8] placeholder-[#87929a] focus:outline-none focus:border-[#38bdf8] transition-colors font-mono"
         />
         {searchQuery && (
@@ -90,15 +96,26 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
         )}
       </div>
 
-      {/* Right Actions & Profile */}
+      {/* Right Actions, Language Switcher & Profile */}
       <div className="flex items-center gap-3">
+        {/* Dil Değiştirici Buton (TR / EN) */}
+{/* Dil Değiştirici Buton (TR / EN) */}
+<button
+  onClick={() => setLang(currentLang === 'en' ? 'tr' : 'en')}
+  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#101017] hover:bg-[#1f1f2e] border border-[#1f1f2e] rounded-lg text-xs font-mono font-bold text-[#38bdf8] transition-all cursor-pointer shadow-sm"
+  title="Change Language / Dili Değiştir"
+>
+  <Globe className="w-3.5 h-3.5" />
+  <span>{currentLang === 'en' ? 'TR' : 'EN'}</span>
+</button>
+
         {/* Deposit Button */}
         <button
           onClick={onOpenDeposit}
           className="px-3.5 py-1.5 text-xs font-bold bg-[#45dfa4] text-[#003825] hover:bg-[#34d399] rounded-lg transition-transform active:scale-95 flex items-center gap-1.5 shadow-md shadow-[#45dfa4]/10 cursor-pointer"
         >
           <PlusCircle className="w-3.5 h-3.5" />
-          Deposit
+          {currentLang === 'tr' ? 'Cüzdan' : 'Deposit'}
         </button>
 
         {/* Trade Button */}
@@ -107,7 +124,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           className="px-3.5 py-1.5 text-xs font-bold bg-[#38bdf8] text-[#004965] hover:bg-[#7bd0ff] rounded-lg transition-transform active:scale-95 flex items-center gap-1.5 shadow-md shadow-[#38bdf8]/10 cursor-pointer"
         >
           <ArrowLeftRight className="w-3.5 h-3.5" />
-          Trade
+          {currentLang === 'tr' ? 'İşlem' : 'Trade'}
         </button>
 
         <div className="h-5 w-px bg-[#1f1f2e] mx-1"></div>
@@ -128,14 +145,13 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
             )}
           </button>
 
-          {/* Notifications Dropdown */}
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 glass-panel rounded-xl p-3 z-50 border border-[#1f1f2e] shadow-2xl">
               <div className="flex justify-between items-center pb-2 border-b border-[#1f1f2e] mb-2">
                 <span className="text-xs font-bold font-headline text-[#dee3e8] uppercase tracking-wider">
-                  Signal Notifications
+                  {currentLang === 'tr' ? 'Sinyal Bildirimleri' : 'Signal Notifications'}
                 </span>
-                <span className="text-[10px] text-[#38bdf8] font-mono">{sampleNotifications.length} Alert Messages</span>
+                <span className="text-[10px] text-[#38bdf8] font-mono">{sampleNotifications.length} {currentLang === 'tr' ? 'Mesaj' : 'Alert Messages'}</span>
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
                 {sampleNotifications.map((n) => (
