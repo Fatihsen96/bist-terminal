@@ -1,68 +1,76 @@
 import React from 'react';
-import { Zap, TrendingUp, ShieldCheck, Activity } from 'lucide-react';
+import { TrendingUp, ShieldCheck, Zap, Activity } from 'lucide-react';
 
 interface KPIGlassCardsProps {
   filteredCount: number;
   marketName: string;
+  currentLang?: 'en' | 'tr';
 }
 
-export const KPIGlassCards: React.FC<KPIGlassCardsProps> = ({ filteredCount, marketName }) => {
+export const KPIGlassCards: React.FC<KPIGlassCardsProps> = ({
+  filteredCount,
+  marketName,
+  currentLang = 'tr',
+}) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5 select-none">
-      {/* Glass Panel 1 */}
-      <div className="glass-panel p-4 rounded-xl flex flex-col justify-between relative overflow-hidden group hover:border-[#38bdf8]/40 transition-all">
-        <div className="absolute -right-4 -top-4 w-20 h-20 bg-[#38bdf8]/5 rounded-full blur-xl group-hover:bg-[#38bdf8]/15 transition-all" />
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider">
-            Market Valuation
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0 select-none">
+      {/* Card 1 */}
+      <div className="glass-panel p-4 rounded-xl border border-[#1f1f2e] bg-[#121316] flex flex-col justify-between shadow-lg">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider">
+            {currentLang === 'tr' ? 'PİYASA DEĞERLEMESİ' : 'MARKET VALUATION'}
           </span>
           <TrendingUp className="w-4 h-4 text-[#34d399]" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-headline font-bold text-xl text-[#dee3e8]">Undervalued</span>
-          <span className="text-[#34d399] font-mono text-xs font-bold">+12.4%</span>
+          <span className="text-base font-bold font-headline text-white">
+            {currentLang === 'tr' ? 'Ucuz / Cazip' : 'Undervalued'}
+          </span>
+          <span className="text-xs font-mono text-[#34d399]">+12.4%</span>
         </div>
       </div>
 
-      {/* Glass Panel 2 */}
-      <div className="glass-panel p-4 rounded-xl flex flex-col justify-between hover:border-[#38bdf8]/40 transition-all">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider">
-            Top Signal Conf.
+      {/* Card 2 */}
+      <div className="glass-panel p-4 rounded-xl border border-[#1f1f2e] bg-[#121316] flex flex-col justify-between shadow-lg">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider">
+            {currentLang === 'tr' ? 'SİNYAL GÜVENCESİ' : 'TOP SIGNAL CONF.'}
           </span>
           <ShieldCheck className="w-4 h-4 text-[#38bdf8]" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-headline font-bold text-xl text-[#dee3e8]">94.2%</span>
-          <span className="text-[#87929a] font-mono text-[11px]">AI CONF</span>
+          <span className="text-base font-bold font-mono text-white">94.2%</span>
+          <span className="text-[10px] text-[#87929a] font-mono">AI CONF</span>
         </div>
       </div>
 
-      {/* Glass Panel 3 */}
-      <div className="glass-panel p-4 rounded-xl flex flex-col justify-between hover:border-[#38bdf8]/40 transition-all">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider">
-            Signal Intensity
+      {/* Card 3 */}
+      <div className="glass-panel p-4 rounded-xl border border-[#1f1f2e] bg-[#121316] flex flex-col justify-between shadow-lg">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider">
+            {currentLang === 'tr' ? 'SİNYAL YOĞUNLUĞU' : 'SIGNAL INTENSITY'}
           </span>
           <Zap className="w-4 h-4 text-[#fbbf24]" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-headline font-bold text-xl text-[#dee3e8]">High</span>
-          <span className="text-[#fbbf24] font-mono text-xs flex items-center">⚡ Peak</span>
+          <span className="text-base font-bold font-headline text-white">
+            {currentLang === 'tr' ? 'Yüksek' : 'High'}
+          </span>
+          <span className="text-xs font-mono text-[#fbbf24]">⚡ Peak</span>
         </div>
       </div>
 
-      {/* Glass Panel 4 */}
-      <div className="glass-panel p-4 rounded-xl flex flex-col justify-between hover:border-[#38bdf8]/40 transition-all">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider">
-            Active Trackers
+      {/* Card 4 */}
+      <div className="glass-panel p-4 rounded-xl border border-[#1f1f2e] bg-[#121316] flex flex-col justify-between shadow-lg">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider">
+            {currentLang === 'tr' ? 'AKTİF TAKİPÇİLER' : 'ACTIVE TRACKERS'}
           </span>
           <Activity className="w-4 h-4 text-[#38bdf8]" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="font-headline font-bold text-xl text-[#dee3e8]">{filteredCount}</span>
-          <span className="text-[#87929a] font-mono text-[11px] uppercase">{marketName}</span>
+          <span className="text-base font-bold font-mono text-white">{filteredCount}</span>
+          <span className="text-[10px] text-[#87929a] font-mono uppercase">{marketName}</span>
         </div>
       </div>
     </div>

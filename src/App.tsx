@@ -28,6 +28,9 @@ export default function App() {
   const [selectedMarket, setSelectedMarket] = useState<MarketCategory>('US Markets');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Language State (Türkçe / İngilizce)
+  const [lang, setLang] = useState<'en' | 'tr'>('tr');
+  
   // Data States
   const [stocks, setStocks] = useState<StockItem[]>(INITIAL_STOCKS);
   const [news, setNews] = useState<SignalNews[]>(INITIAL_NEWS);
@@ -213,6 +216,8 @@ export default function App() {
           onOpenDeposit={() => setIsDepositOpen(true)}
           onOpenTrade={() => setTradeModalStock(selectedStock || stocks[0])}
           notificationCount={2}
+          currentLang={lang}
+          setLang={setLang}
         />
         {/* Content Views */}
         <div className="flex-1 flex overflow-hidden">
@@ -228,11 +233,12 @@ export default function App() {
                 toggleSector={toggleSectorFilter}
                 onRunAiAnalysis={handleRunAiAnalysis}
                 isAnalyzing={isAnalyzing}
+                currentLang={lang}
               />
               {/* Main Screener Dashboard */}
               <section className="flex-1 p-5 overflow-y-auto custom-scrollbar flex flex-col gap-5">
                 {/* KPI Glass Cards */}
-                <KPIGlassCards filteredCount={filteredStocks.length} marketName={selectedMarket} />
+                <KPIGlassCards filteredCount={filteredStocks.length} marketName={selectedMarket} currentLang={lang} />
                 {/* Main Dashboard Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">
                   {/* Leaderboard Table (8 cols) */}
@@ -242,6 +248,7 @@ export default function App() {
                       selectedStock={selectedStock}
                       onSelectStock={(st) => setSelectedStock(st)}
                       onOpenDetailModal={(st) => setDetailModalStock(st)}
+                      currentLang={lang}
                     />
                   </div>
                   {/* Right Column (4 cols) */}
@@ -251,6 +258,7 @@ export default function App() {
                       <RadarChart
                         stock={selectedStock}
                         onOpenDetailModal={(st) => setDetailModalStock(st)}
+                        currentLang={lang}
                       />
                     </div>
                     {/* News Feed */}
@@ -314,4 +322,4 @@ export default function App() {
       />
     </div>
   );
-}const [lang, setLang] = useState<'en' | 'tr'>('tr'); // Varsayılan dil Türkçe
+}

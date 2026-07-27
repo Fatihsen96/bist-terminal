@@ -10,6 +10,7 @@ interface FilterSidebarProps {
   toggleSector: (sector: string) => void;
   onRunAiAnalysis: () => void;
   isAnalyzing: boolean;
+  currentLang?: 'en' | 'tr'; // Dil desteği eklendi
 }
 
 export const FilterSidebar: React.FC<FilterSidebarProps> = ({
@@ -21,6 +22,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
   toggleSector,
   onRunAiAnalysis,
   isAnalyzing,
+  currentLang = 'tr',
 }) => {
   const [showAddSector, setShowAddSector] = useState(false);
   const [newSectorInput, setNewSectorInput] = useState('');
@@ -49,7 +51,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
       <div className="flex items-center gap-2 mb-6">
         <Bot className="w-5 h-5 text-[#38bdf8]" />
         <h2 className="font-headline font-bold text-sm text-[#dee3e8] uppercase tracking-wider">
-          AI Bot Filters
+          {currentLang === 'tr' ? 'Yapay Zeka Filtreleri' : 'AI Bot Filters'}
         </h2>
       </div>
 
@@ -58,7 +60,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider">
-              Valuation Range
+              {currentLang === 'tr' ? 'Değerleme Aralığı' : 'Valuation Range'}
             </label>
             <span className="text-xs font-mono text-[#38bdf8]">
               {valuationRange[0]} - {valuationRange[1]}
@@ -74,8 +76,8 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
               className="w-full h-1 bg-[#1f1f2e] rounded-lg appearance-none cursor-pointer accent-[#38bdf8]"
             />
             <div className="flex justify-between text-[11px] font-mono text-[#94a3b8]">
-              <span>0 (Deep Value)</span>
-              <span>100 (Peak Multiples)</span>
+              <span>{currentLang === 'tr' ? '0 (Düşük Değer)' : '0 (Deep Value)'}</span>
+              <span>{currentLang === 'tr' ? '100 (Tepe Çarpanlar)' : '100 (Peak Multiples)'}</span>
             </div>
           </div>
         </div>
@@ -83,7 +85,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
         {/* Primary Signals */}
         <div>
           <label className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider mb-2.5 block">
-            Primary Signals
+            {currentLang === 'tr' ? 'Birincil Sinyaller' : 'Primary Signals'}
           </label>
           <div className="grid grid-cols-1 gap-2">
             {signalOptions.map((opt) => {
@@ -113,7 +115,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
         {/* Sector Focus */}
         <div>
           <label className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider mb-2.5 block">
-            Sector Focus
+            {currentLang === 'tr' ? 'Sektör Odağı' : 'Sector Focus'}
           </label>
           <div className="flex flex-wrap gap-1.5">
             {availableSectors.map((sector) => {
@@ -138,7 +140,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 onClick={() => setShowAddSector(true)}
                 className="px-2 py-1 border border-[#38bdf8]/50 text-[#38bdf8] hover:bg-[#38bdf8]/10 rounded text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
               >
-                <Plus className="w-3 h-3" /> Add
+                <Plus className="w-3 h-3" /> {currentLang === 'tr' ? 'Ekle' : 'Add'}
               </button>
             ) : (
               <div className="flex items-center gap-1 w-full mt-1">
@@ -146,7 +148,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   type="text"
                   value={newSectorInput}
                   onChange={(e) => setNewSectorInput(e.target.value)}
-                  placeholder="Custom sector..."
+                  placeholder={currentLang === 'tr' ? 'Özel sektör...' : 'Custom sector...'}
                   className="px-2 py-1 bg-[#101017] border border-[#38bdf8] rounded text-xs text-[#dee3e8] focus:outline-none flex-1 font-mono"
                   onKeyDown={(e) => e.key === 'Enter' && handleAddCustomSector()}
                   autoFocus
@@ -178,7 +180,9 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
             }`}
           >
             <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
-            {isAnalyzing ? 'Analyzing Signals...' : 'Run AI Analysis'}
+            {isAnalyzing 
+              ? (currentLang === 'tr' ? 'Sinyaller Analiz Ediliyor...' : 'Analyzing Signals...') 
+              : (currentLang === 'tr' ? 'Yapay Zeka Analizini Çalıştır' : 'Run AI Analysis')}
           </button>
         </div>
       </div>

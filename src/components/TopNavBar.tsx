@@ -34,14 +34,10 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
   setLang,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  
-  // Kripto ve Forex tamamen kaldırıldı, sadece BIST ve US Markets kaldı
   const markets: MarketCategory[] = ['BIST', 'US Markets'];
 
   const sampleNotifications = [
-    { id: '1', title: 'META Signal Alert', text: 'Strong Buy score upgraded to 92 based on Q2 free cash flow metrics.', time: '12m ago', unread: true },
-    { id: '2', title: 'THYAO Target Hit', text: 'THYAO reached ₺312.50 (+2.8%). Target upside remains +36.5%.', time: '1h ago', unread: true },
-    { id: '3', title: 'Macro Update', text: 'Fed rate projection model refreshed for all US equities.', time: '2h ago', unread: false },
+    { id: '1', title: 'META Signal Alert', text: 'Strong Buy score upgraded to 92 based on Q2 free cash flow metrics.', time: '12m ago' },
   ];
 
   return (
@@ -55,7 +51,6 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           </span>
         </div>
 
-        {/* Market Category Tabs (Sadece BIST ve US Markets) */}
         <div className="flex items-center gap-1 bg-[#101017] p-1 rounded-lg border border-[#1f1f2e]">
           {markets.map((m) => {
             const isActive = selectedMarket === m;
@@ -83,7 +78,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={currentLang === 'tr' ? `${selectedMarket} hisselerini ara (örn: THYAO, NVDA)...` : `Search ${selectedMarket} tickers (e.g. META, THYAO)...`}
+          placeholder={currentLang === 'tr' ? `${selectedMarket} hisselerini ara...` : `Search ${selectedMarket} tickers...`}
           className="w-full pl-9 pr-3 py-1.5 bg-[#070709] border border-[#1f1f2e] rounded-lg text-xs text-[#dee3e8] placeholder-[#87929a] focus:outline-none focus:border-[#38bdf8] transition-colors font-mono"
         />
         {searchQuery && (
@@ -98,16 +93,16 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
 
       {/* Right Actions, Language Switcher & Profile */}
       <div className="flex items-center gap-3">
-        {/* Dil Değiştirici Buton (TR / EN) */}
-{/* Dil Değiştirici Buton (TR / EN) */}
-<button
-  onClick={() => setLang(currentLang === 'en' ? 'tr' : 'en')}
-  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#101017] hover:bg-[#1f1f2e] border border-[#1f1f2e] rounded-lg text-xs font-mono font-bold text-[#38bdf8] transition-all cursor-pointer shadow-sm"
-  title="Change Language / Dili Değiştir"
->
-  <Globe className="w-3.5 h-3.5" />
-  <span>{currentLang === 'en' ? 'TR' : 'EN'}</span>
-</button>
+        {/* Dil Değiştirici Buton: Eğer şu an TR'deysek butonda "EN" yazar (İngilizce'ye geçmek için). 
+            Eğer EN'deysek butonda "TR" yazar (Türkçe'ye geçmek için). */}
+        <button
+          onClick={() => setLang(currentLang === 'tr' ? 'en' : 'tr')}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#101017] hover:bg-[#1f1f2e] border border-[#1f1f2e] rounded-lg text-xs font-mono font-bold text-[#38bdf8] transition-all cursor-pointer shadow-sm"
+          title={currentLang === 'tr' ? "Switch to English" : "Türkçe'ye Geç"}
+        >
+          <Globe className="w-3.5 h-3.5" />
+          <span>{currentLang === 'tr' ? 'EN' : 'TR'}</span>
+        </button>
 
         {/* Deposit Button */}
         <button
@@ -134,12 +129,8 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="p-2 text-[#bdc8d1] hover:text-[#38bdf8] transition-colors rounded-lg hover:bg-[#101017] relative cursor-pointer"
-            title="Notifications"
           >
             <Bell className="w-4 h-4" />
-            {notificationCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#fb7185] animate-ping" />
-            )}
             {notificationCount > 0 && (
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#fb7185]" />
             )}
@@ -149,21 +140,14 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
             <div className="absolute right-0 mt-2 w-80 glass-panel rounded-xl p-3 z-50 border border-[#1f1f2e] shadow-2xl">
               <div className="flex justify-between items-center pb-2 border-b border-[#1f1f2e] mb-2">
                 <span className="text-xs font-bold font-headline text-[#dee3e8] uppercase tracking-wider">
-                  {currentLang === 'tr' ? 'Sinyal Bildirimleri' : 'Signal Notifications'}
+                  {currentLang === 'tr' ? 'Bildirimler' : 'Notifications'}
                 </span>
-                <span className="text-[10px] text-[#38bdf8] font-mono">{sampleNotifications.length} {currentLang === 'tr' ? 'Mesaj' : 'Alert Messages'}</span>
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+              <div className="space-y-2">
                 {sampleNotifications.map((n) => (
-                  <div key={n.id} className="p-2.5 rounded-lg bg-[#101017] border border-[#1f1f2e] hover:border-[#38bdf8]/40 transition-colors">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-bold text-[#dee3e8] flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-[#38bdf8]" />
-                        {n.title}
-                      </span>
-                      <span className="text-[10px] text-[#87929a] font-mono">{n.time}</span>
-                    </div>
-                    <p className="text-[11px] text-[#bdc8d1] leading-relaxed">{n.text}</p>
+                  <div key={n.id} className="p-2.5 rounded-lg bg-[#101017] border border-[#1f1f2e]">
+                    <div className="text-xs font-bold text-white mb-1">{n.title}</div>
+                    <p className="text-[11px] text-[#bdc8d1]">{n.text}</p>
                   </div>
                 ))}
               </div>
@@ -172,10 +156,10 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
         </div>
 
         {/* Analyst Avatar */}
-        <div className="w-8 h-8 rounded-full bg-[#101017] border border-[#1f1f2e] flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#38bdf8] transition-colors">
+        <div className="w-8 h-8 rounded-full bg-[#101017] border border-[#1f1f2e] flex items-center justify-center overflow-hidden cursor-pointer">
           <img
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3QcTL7wU1ef6leUPxx-q3ePdHJf3Y2FTs1J-izSOKRDACFdQOT4ZowuHukggvlTpWCg_KMq_HOw7zOB-USfQ0TT0UStN-XQ2xBTOHPDOz4SWY0rVWlpfugMw7DPC9BX1Bq8RoSJipTvsrcKWn8s9lzrhJSPBYZSXlUniy64DCq3LGEJ4EBhcxbDY5_aC16EgWx79RhyLAFooY4Cg0i2wRg02M3WxlG4z4NburZQgEyzi6E7khS_i3wjSxvlb2KFCPK2J-HjF1tMM"
-            alt="Institutional Analyst Profile"
+            alt="Profile"
             className="w-full h-full object-cover"
           />
         </div>
