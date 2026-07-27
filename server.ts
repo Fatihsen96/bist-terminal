@@ -5,7 +5,8 @@ import { GoogleGenAI } from "@google/genai";
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
+  const PYTHON_BACKEND = process.env.PYTHON_BACKEND_URL || "http://127.0.0.1:8000";
 
   app.use(express.json());
 
@@ -19,7 +20,7 @@ async function startServer() {
       apiKey,
       httpOptions: {
         headers: {
-          "User-Agent": "aistudio-build",
+          "User-Agent": "finos-build",
         },
       },
     });
@@ -30,10 +31,36 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // AI Stock Analysis endpoint
+  // Proxy to Python FastAPI scanning engine if running
+  app.get("/api/tara", async (req, res) => {
+    try {
+      const piyasa = req.query.piyasa || "BIST";
+      const response = await fetch(`${PYTHON_BACKEND}/api/tara?piyasa=${piyasa}`);
+      const data = await response.json();
+      res.json(data);
+    } catch (err: any) {
+      console.warn("Python backend connection fallback, returning empty or retrying...", err.message);
+      res.status(502).json({ error: "Python Backend (FastAPI) unreachable.", piyasa: req.query.piyasa, veriler: [] });
+    }
+  });
+
+  // Proxy for Single Stock Analysis
+  app.get("/api/hisse/:symbol", async (req, res) => {
+    try {
+      const symbol = req.params.symbol;
+      const piyasa = req.query.piyasa || "BIST";
+      const response = await fetch(`${PYTHON_BACKEND}/api/hisse/${symbol}?piyasa=${piyasa}`);
+      const data = await response.json();
+      res.json(data);
+    } catch (err: any) {
+      res.status(502).json({ success: false, error: err.message });
+    }
+  });
+
+  // AI Stock Analysis endpoint (Explainable AI PRD v2.0 Format)
   app.post("/api/ai/analyze", async (req, res) => {
     try {
-      const { symbol, name, market, currentPrice, peRatio, sector, userQuestion } = req.body;
+      const { symbol, name, market, currentPrice, peRatio, technicalScore, fundamentalScore, newsScore, analystScore, aiScore, signal } = req.body;
 
       if (!symbol) {
         return res.status(400).json({ error: "Symbol is required" });
@@ -41,49 +68,33 @@ async function startServer() {
 
       const ai = getGenAI();
 
-      const prompt = `You are an elite quantitative analyst and chief equity strategist at MarketTerminal.
-Analyze the following asset and provide institutional insights:
-Asset: ${symbol} (${name || symbol})
-Market: ${market || "Equities"}
-Sector: ${sector || "General"}
-Current Price: ${currentPrice || "N/A"}
-P/E Ratio: ${peRatio || "N/A"}
-User specific question / context: ${userQuestion || "Provide a comprehensive 3-bullet investment thesis, key risk factors, and valuation health score justification."}
+      const systemPrompt = `SYSTEM PROMPT:
+Sen FinOS'un rasyonel, tarafsız finansal araştırma asistanısın.
+Sana verilen JSON verisi, matematiksel karar motorumuz tarafından hesaplanmıştır.
+GÖREVİN: Asla yeni bir sinyal (AL/SAT) üretme. Sadece sana verilen skorların Neden bu şekilde çıktığını 3 cümleyi geçmeyecek şekilde açıkla.`;
 
-Return a JSON object matching this schema strictly:
-{
-  "investmentThesis": "Detailed 2-3 sentence strategic rationale",
-  "valueScore": 88, // integer 0-100
-  "signal": "STRONG BUY" | "BUY" | "WAIT" | "OVERVALUED" | "SELL",
-  "upsidePercentage": 24.5, // float estimated 12-month upside
-  "healthBreakdown": {
-    "profit": 85, // 0-100
-    "debt": 30,   // 0-100 (lower debt means healthier)
-    "value": 82,  // 0-100
-    "flow": 90,   // 0-100
-    "momentum": 78, // 0-100
-    "sentiment": 85 // 0-100
-  },
-  "keyCatalysts": ["Catalyst 1", "Catalyst 2", "Catalyst 3"],
-  "riskFactors": ["Risk 1", "Risk 2"]
-}`;
+      const inputJson = JSON.stringify({
+        ticker: symbol,
+        ai_score: aiScore || 85,
+        signal: signal || "BUY",
+        technical_score: technicalScore,
+        fundamental_score: fundamentalScore,
+        news_score: newsScore,
+        analyst_score: analystScore
+      });
 
       const response = await ai.models.generateContent({
         model: "gemini-3.6-flash",
-        contents: prompt,
+        contents: `${systemPrompt}\n\n[INPUT JSON]\n${inputJson}`,
         config: {
-          responseMimeType: "application/json",
           temperature: 0.2,
         },
       });
 
-      const text = response.text || "{}";
-      const parsedData = JSON.parse(text);
-
       res.json({
         success: true,
         symbol,
-        analysis: parsedData,
+        explanation: response.text,
       });
     } catch (error: any) {
       console.error("AI Analysis Error:", error);
@@ -105,10 +116,10 @@ Return a JSON object matching this schema strictly:
 
       const ai = getGenAI();
 
-      const systemInstruction = `You are MarketTerminal AI, a senior Wall Street & Borsa İstanbul algorithmic trading bot and valuation strategist.
+      const systemInstruction = `You are FinOS AI, a senior Wall Street & Borsa İstanbul algorithmic trading bot and valuation strategist.
 Answer concisely in a technical, crisp, highly analytical tone.
-Highlight price targets, valuation metrics (EV/EBITDA, P/E, FCF yield), macro drivers, technical indicators (RSI, MACD, Volume Profile), and actionable signal recommendations.
-If asked in Turkish, respond in clear professional Turkish financial terminology.`;
+Highlight price targets, valuation metrics (EV/EBITDA, P/E, FCF yield), macro drivers, technical indicators (RSI, MACD, Volume Profile, MOST), and actionable signal recommendations.
+Respond in clear professional Turkish financial terminology.`;
 
       const prompt = `Active Context: Asset=${activeSymbol || "None Selected"}, Market=${marketContext || "Global"}.
 User Question: ${message}`;
@@ -150,8 +161,8 @@ User Question: ${message}`;
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, () => {
+    console.log(`FinOS Express Gateway running on http://localhost:${PORT}`);
   });
 }
 

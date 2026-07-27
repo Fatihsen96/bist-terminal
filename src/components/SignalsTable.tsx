@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StockItem } from '../types';
-import { ArrowUpDown, Sparkles, Activity, CheckCircle2 } from 'lucide-react';
+import { ArrowUpDown, Sparkles, Activity, CheckCircle2, Award, Zap, AlertTriangle } from 'lucide-react';
 
 interface SignalsTableProps {
   stocks: StockItem[];
@@ -19,16 +19,24 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
 }) => {
   const [sortField, setSortField] = useState<'valueScore' | 'upside' | 'symbol' | 'fairPrice'>('valueScore');
   const [sortAsc, setSortAsc] = useState(false);
+  const [filterTab, setFilterTab] = useState<'all' | 'fourOfFour' | 'trend' | 'undervalued' | 'overvalued'>('all');
   
-  // Akıllı Dinamik Baloncuk Yönü Yönetimi
   const [hoveredStockId, setHoveredStockId] = useState<string | null>(null);
   const [tooltipOpenUp, setTooltipOpenUp] = useState<boolean>(false);
 
-  const sortedStocks = [...stocks].sort((a, b) => {
+  // Quick Filter Tab logic
+  const filteredStocks = stocks.filter((stock) => {
+    if (filterTab === 'fourOfFour') return stock.isFourOfFour;
+    if (filterTab === 'trend') return stock.indicatorValues?.most?.is_bullish || stock.indicatorValues?.goldenCross || (stock.technicalScore && stock.technicalScore >= 70);
+    if (filterTab === 'undervalued') return stock.signal === 'STRONG BUY' || stock.upside >= 20;
+    if (filterTab === 'overvalued') return stock.signal === 'OVERVALUED' || stock.signal === 'SELL' || stock.valueScore < 50;
+    return true;
+  });
+
+  const sortedStocks = [...filteredStocks].sort((a, b) => {
     let aVal = a[sortField];
     let bVal = b[sortField];
 
-    // Eğer adil değer boşsa mevcut fiyatı baz al
     if (sortField === 'fairPrice') {
       aVal = a.fairPrice ?? a.price;
       bVal = b.fairPrice ?? b.price;
@@ -51,11 +59,9 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
     }
   };
 
-  // Fare hücreye geldiğinde ekran mesafesini ölçüp yönü belirleyen fonksiyon
   const handleScoreCellMouseEnter = (e: React.MouseEvent<HTMLTableCellElement>, stockId: string) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    // Eğer alt tarafta 220px'den az alan kaldıysa yukarıya doğru aç
     setTooltipOpenUp(spaceBelow < 220);
     setHoveredStockId(stockId);
   };
@@ -79,247 +85,191 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
     }
   };
 
-  // Dinamik Skor Renklendirme
   const getScoreColorClass = (score: number) => {
-    if (score < 25) return 'text-[#fb7185]'; // Kırmızı
-    if (score < 50) return 'text-[#fb923c]'; // Turuncu
-    if (score < 75) return 'text-[#fbbf24]'; // Sarı
-    return 'text-[#34d399]';                // Yeşil
+    if (score < 25) return 'text-[#fb7185]';
+    if (score < 50) return 'text-[#fb923c]';
+    if (score < 75) return 'text-[#fbbf24]';
+    return 'text-[#34d399]';
   };
 
   return (
     <div className="glass-panel rounded-xl overflow-hidden flex flex-col h-full border border-[#1f1f2e] bg-[#121316]">
       {/* Table Header Controls */}
-      <div className="p-4 border-b border-[#1f1f2e] flex justify-between items-center bg-[#0c0d10]/60 shrink-0">
+      <div className="p-4 border-b border-[#1f1f2e] flex flex-wrap justify-between items-center bg-[#0c0d10]/60 shrink-0 gap-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[#38bdf8]" />
           <h3 className="font-headline font-bold text-xs uppercase tracking-widest text-[#38bdf8]">
-            {currentLang === 'tr' ? `En İyi Değerleme Sinyalleri (${sortedStocks.length} Hisse)` : `Top Valuation Signals (${sortedStocks.length} Assets)`}
+            {currentLang === 'tr' ? `FinOS Karar Motoru Sinyalleri (${sortedStocks.length} Hisse)` : `FinOS Decision Signals (${sortedStocks.length} Assets)`}
           </h3>
         </div>
-        <div className="text-[10px] font-mono text-[#87929a] flex items-center gap-1.5">
-          <Activity className="w-3.5 h-3.5 text-[#34d399] animate-pulse" />
-          <span>{currentLang === 'tr' ? 'Canlı Telemetri' : 'Live Telemetry'}</span>
+
+        {/* Filter Quick Buttons */}
+        <div className="flex items-center gap-1.5 bg-[#070709] p-1 rounded-lg border border-[#1f1f2e] text-[11px] font-semibold overflow-x-auto">
+          <button
+            onClick={() => setFilterTab('all')}
+            className={`px-2.5 py-1 rounded transition-all whitespace-nowrap ${filterTab === 'all' ? 'bg-[#38bdf8] text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+          >
+            Tümü
+          </button>
+          <button
+            onClick={() => setFilterTab('fourOfFour')}
+            className={`px-2.5 py-1 rounded transition-all flex items-center gap-1 whitespace-nowrap ${filterTab === 'fourOfFour' ? 'bg-amber-400 text-slate-950 font-bold' : 'text-amber-400 hover:bg-amber-400/10'}`}
+          >
+            <Award className="w-3 h-3" /> 4/4 Uyum
+          </button>
+          <button
+            onClick={() => setFilterTab('trend')}
+            className={`px-2.5 py-1 rounded transition-all flex items-center gap-1 whitespace-nowrap ${filterTab === 'trend' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-emerald-400 hover:bg-emerald-500/10'}`}
+          >
+            <Zap className="w-3 h-3" /> Yükseliş Trendi
+          </button>
+          <button
+            onClick={() => setFilterTab('undervalued')}
+            className={`px-2.5 py-1 rounded transition-all flex items-center gap-1 whitespace-nowrap ${filterTab === 'undervalued' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-cyan-400 hover:bg-cyan-500/10'}`}
+          >
+            Kelepir Hisseler
+          </button>
+          <button
+            onClick={() => setFilterTab('overvalued')}
+            className={`px-2.5 py-1 rounded transition-all flex items-center gap-1 whitespace-nowrap ${filterTab === 'overvalued' ? 'bg-rose-500 text-white font-bold' : 'text-rose-400 hover:bg-rose-500/10'}`}
+          >
+            Şişmiş Hisseler
+          </button>
         </div>
       </div>
 
-      {/* Table Body Container */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col justify-between">
-        <table className="w-full text-left border-collapse select-none">
-          <thead className="sticky top-0 bg-[#0c0d10] z-20">
-            <tr className="border-b border-[#1f1f2e]">
-              <th
-                onClick={() => handleSort('symbol')}
-                className="p-3 text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider cursor-pointer hover:text-white"
-              >
+      {/* Table Body */}
+      <div className="overflow-x-auto flex-1">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead className="bg-[#070709]/80 text-[#87929a] font-mono text-[10px] uppercase border-b border-[#1f1f2e] sticky top-0 z-20 backdrop-blur">
+            <tr>
+              <th className="py-2.5 px-3 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('symbol')}>
                 <div className="flex items-center gap-1">
-                  {currentLang === 'tr' ? 'Sembol' : 'Symbol'} <ArrowUpDown className="w-3 h-3 text-[#87929a]" />
+                  <span>Hisse</span>
+                  <ArrowUpDown className="w-3 h-3" />
                 </div>
               </th>
-              <th
-                onClick={() => handleSort('fairPrice')}
-                className="p-3 text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider cursor-pointer hover:text-white"
-              >
+              <th className="py-2.5 px-3">Fiyat</th>
+              <th className="py-2.5 px-3 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('fairPrice')}>
                 <div className="flex items-center gap-1">
-                  {currentLang === 'tr' ? 'Adil Değer' : 'Fair Price'} <ArrowUpDown className="w-3 h-3 text-[#87929a]" />
+                  <span>Adil Değer</span>
+                  <ArrowUpDown className="w-3 h-3" />
                 </div>
               </th>
-              <th className="p-3 text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider">
-                {currentLang === 'tr' ? 'Şirket Sağlığı' : 'Company Health'}
-              </th>
-              <th
-                onClick={() => handleSort('valueScore')}
-                className="p-3 text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider cursor-pointer hover:text-white"
-              >
+              <th className="py-2.5 px-3 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('upside')}>
                 <div className="flex items-center gap-1">
-                  {currentLang === 'tr' ? 'Değer Puanı' : 'Value Score'} <ArrowUpDown className="w-3 h-3 text-[#87929a]" />
+                  <span>Potansiyel %</span>
+                  <ArrowUpDown className="w-3 h-3" />
                 </div>
               </th>
-              <th className="p-3 text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider">
-                {currentLang === 'tr' ? 'Sinyal' : 'Signal'}
-              </th>
-              <th
-                onClick={() => handleSort('upside')}
-                className="p-3 text-[10px] font-bold font-sans text-[#87929a] uppercase tracking-wider cursor-pointer hover:text-white"
-              >
-                <div className="flex items-center gap-1">
-                  {currentLang === 'tr' ? 'Potansiyel %' : 'Upside %'} <ArrowUpDown className="w-3 h-3 text-[#87929a]" />
+              <th className="py-2.5 px-3 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('valueScore')}>
+                <div className="flex items-center gap-1 text-[#38bdf8]">
+                  <span>AI Skor (0-100)</span>
+                  <ArrowUpDown className="w-3 h-3" />
                 </div>
               </th>
+              <th className="py-2.5 px-3">4 Disiplin Kırılımı</th>
+              <th className="py-2.5 px-3 text-right">Aksiyon</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#1f1f2e]/60">
-            {sortedStocks.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-12 text-center text-xs text-[#87929a]">
-                  {currentLang === 'tr' ? 'Seçilen filtrelere uygun hisse bulunamadı.' : 'No matching assets found.'}
-                </td>
-              </tr>
-            ) : (
-              sortedStocks.map((stock) => {
-                const isSelected = selectedStock?.id === stock.id;
-                const isHovered = hoveredStockId === stock.id;
-                const hb = stock.healthBreakdown || { profit: 75, fk: 70, pddd: 65, favok: 80, netVarlik: 75, borc: 85 };
+          <tbody className="divide-y divide-[#1f1f2e]/60 font-mono text-slate-200">
+            {sortedStocks.map((stock) => {
+              const isSelected = selectedStock?.symbol === stock.symbol;
+              const isPos = stock.change24h >= 0;
 
-                return (
-                  <tr
-                    key={stock.id}
-                    onClick={() => onSelectStock(stock)}
-                    onDoubleClick={() => onOpenDetailModal(stock)}
-                    className={`hover:bg-[#1a1b23] transition-colors cursor-pointer group/row relative ${
-                      isHovered ? 'z-40' : 'z-10'
-                    } ${isSelected ? 'bg-[#1a1b23] border-l-2 border-[#38bdf8]' : ''}`}
+              return (
+                <tr
+                  key={stock.id || stock.symbol}
+                  onClick={() => onSelectStock(stock)}
+                  className={`hover:bg-[#1f262e]/50 transition-all cursor-pointer ${isSelected ? 'bg-cyan-950/30 border-l-2 border-cyan-400' : ''}`}
+                >
+                  {/* Ticker Symbol */}
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2">
+                      <div className="font-bold text-white text-sm">{stock.symbol}</div>
+                      {stock.isFourOfFour && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-400 text-slate-950 animate-pulse">
+                          4/4 UYUM
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate max-w-[120px]">{stock.name}</div>
+                  </td>
+
+                  {/* Price & Change */}
+                  <td className="py-3 px-3">
+                    <div className="font-semibold text-white">{stock.currency}{stock.price.toFixed(2)}</div>
+                    <div className={`text-[10px] font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {isPos ? '+' : ''}{stock.change24h.toFixed(2)}%
+                    </div>
+                  </td>
+
+                  {/* Fair Price */}
+                  <td className="py-3 px-3 font-semibold text-cyan-300">
+                    {stock.currency}{stock.fairPrice || stock.price}
+                  </td>
+
+                  {/* Upside % */}
+                  <td className="py-3 px-3">
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-extrabold ${stock.upside >= 0 ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/40' : 'bg-rose-950/60 text-rose-300 border border-rose-800/40'}`}>
+                      {stock.upside >= 0 ? '+' : ''}{stock.upside}%
+                    </span>
+                  </td>
+
+                  {/* AI Score */}
+                  <td
+                    className="py-3 px-3 relative"
+                    onMouseEnter={(e) => handleScoreCellMouseEnter(e, stock.symbol)}
+                    onMouseLeave={handleScoreCellMouseLeave}
                   >
-                    {/* Symbol & Price */}
-                    <td className="p-3">
-                      <div className="flex flex-col">
-                        <span className="text-[#dee3e8] font-bold font-mono text-xs flex items-center gap-1.5 group-hover/row:text-[#38bdf8]">
-                          {stock.symbol}
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-[#1f1f2e] text-[#87929a] font-normal">
-                            {stock.currency}{stock.price.toFixed(2)}
-                          </span>
-                        </span>
-                        <span className="text-[10px] text-[#87929a] truncate max-w-[130px]">
-                          {stock.name}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Adil Değer (Fair Price) */}
-                    <td className="p-3">
-                      <span className="font-mono text-xs font-bold text-[#38bdf8]">
-                        {stock.currency}{stock.fairPrice ? stock.fairPrice.toFixed(2) : stock.price.toFixed(2)}
-                      </span>
-                    </td>
-
-                    {/* Company Health Dots */}
-                    <td className="p-3">
-                      <div className="flex items-center gap-1" title={`${stock.healthDots}/5 Sağlık Endeksi`}>
-                        {[1, 2, 3, 4, 5].map((dot) => (
-                          <div
-                            key={dot}
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              dot <= stock.healthDots ? 'bg-[#34d399]' : 'bg-[#87929a]/30'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </td>
-
-                    {/* Value Score + AKILLI DİNAMİK BİLGİ BALONCUĞU */}
-                    <td
-                      className="p-3 relative"
-                      onMouseEnter={(e) => handleScoreCellMouseEnter(e, stock.id)}
-                      onMouseLeave={handleScoreCellMouseLeave}
-                    >
-                      <span className={`font-mono font-bold text-base border-b border-dashed border-[#38bdf8]/40 cursor-help ${getScoreColorClass(stock.valueScore)}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-base font-extrabold ${getScoreColorClass(stock.valueScore)}`}>
                         {stock.valueScore}
                       </span>
-
-                      {/* Akıllı Dinamik Yönlü Bilgi Baloncuğu */}
-                      {isHovered && (
-                        <div
-                          className={`absolute left-0 ${
-                            tooltipOpenUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-                          } flex flex-col gap-1.5 w-56 p-3 bg-[#0c0d10] border border-[#38bdf8]/60 rounded-xl shadow-2xl z-50 pointer-events-none text-[11px] backdrop-blur-md transition-all duration-150`}
-                        >
-                          <div className="font-bold text-[#38bdf8] border-b border-[#1f1f2e] pb-1 flex justify-between items-center">
-                            <span>{stock.symbol} Rasyo Dökümü</span>
-                            <span className={`font-mono font-bold ${getScoreColorClass(stock.valueScore)}`}>
-                              {stock.valueScore}/100
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between text-[#dee3e8]">
-                            <span>Karlılık (ROE):</span>
-                            <span className={`font-mono font-bold ${getScoreColorClass(hb.profit ?? 70)}`}>
-                              {hb.profit ?? 70}/100
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between text-[#dee3e8]">
-                            <span>F/K İskontosu:</span>
-                            <span className={`font-mono font-bold ${getScoreColorClass(hb.fk ?? 70)}`}>
-                              {hb.fk ?? 70}/100
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between text-[#dee3e8]">
-                            <span>PD/DD Skoru:</span>
-                            <span className={`font-mono font-bold ${getScoreColorClass(hb.pddd ?? 70)}`}>
-                              {hb.pddd ?? 70}/100
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between text-[#dee3e8]">
-                            <span>FAVÖK Gücü:</span>
-                            <span className={`font-mono font-bold ${getScoreColorClass(hb.favok ?? 70)}`}>
-                              {hb.favok ?? 70}/100
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between text-[#dee3e8]">
-                            <span>Net Varlık:</span>
-                            <span className={`font-mono font-bold ${getScoreColorClass(hb.netVarlik ?? 70)}`}>
-                              {hb.netVarlik ?? 70}/100
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between text-[#dee3e8]">
-                            <span>Borç Yapısı:</span>
-                            <span className={`font-mono font-bold ${getScoreColorClass(hb.borc ?? 70)}`}>
-                              {hb.borc ?? 70}/100
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Signal Badge */}
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getSignalBadgeClass(
-                          stock.signal
-                        )}`}
-                      >
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${getSignalBadgeClass(stock.signal)}`}>
                         {stock.signal}
                       </span>
-                    </td>
+                    </div>
 
-                    {/* Upside % */}
-                    <td className="p-3">
-                      <span
-                        className={`font-mono text-xs font-bold ${
-                          stock.upside >= 0 ? 'text-[#34d399]' : 'text-[#fb7185]'
-                        }`}
-                      >
-                        {stock.upside >= 0 ? `+${stock.upside.toFixed(1)}%` : `${stock.upside.toFixed(1)}%`}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+                    {/* Tooltip on Hover */}
+                    {hoveredStockId === stock.symbol && (
+                      <div className={`absolute left-0 ${tooltipOpenUp ? 'bottom-full mb-2' : 'top-full mt-2'} w-64 p-3 bg-slate-950 border border-slate-700 rounded-xl shadow-2xl z-50 text-[11px] space-y-1.5 pointer-events-none`}>
+                        <p className="font-bold text-cyan-300 border-b border-slate-800 pb-1">{stock.symbol} Deterministik Skor Kırılımı</p>
+                        <div className="flex justify-between text-slate-300"><span>Teknik Analiz (%35):</span> <strong>{stock.technicalScore || 85}/100</strong></div>
+                        <div className="flex justify-between text-slate-300"><span>Temel Bilanço (%30):</span> <strong>{stock.fundamentalScore || 80}/100</strong></div>
+                        <div className="flex justify-between text-slate-300"><span>Haber / KAP NLP (%15):</span> <strong>{stock.newsScore || 75}/100</strong></div>
+                        <div className="flex justify-between text-slate-300"><span>Analist Hedef (%20):</span> <strong>{stock.analystScore || 88}/100</strong></div>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* 4 Pillar Breakdown Indicators */}
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">Tek: {stock.technicalScore || 85}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">Tem: {stock.fundamentalScore || 80}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">Hab: {stock.newsScore || 75}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">Ana: {stock.analystScore || 88}</span>
+                    </div>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="py-3 px-3 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenDetailModal(stock);
+                      }}
+                      className="px-3 py-1 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/60 text-cyan-300 font-bold rounded-lg text-xs transition-all shadow-sm"
+                    >
+                      Analiz Et
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-      </div>
-
-      {/* Alt Bilgi ve Durum Çubuğu */}
-      <div className="p-3 border-t border-[#1f1f2e] bg-[#0c0d10]/80 flex justify-between items-center text-[10px] font-mono text-[#87929a] shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#34d399] animate-pulse"></span>
-          <span>
-            {currentLang === 'tr' ? 'Canlı Borsa Senkronizasyonu Aktif' : 'Live Market Sync Active'}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5 text-[#38bdf8]" />
-          <span>
-            {currentLang === 'tr'
-              ? `Listelenen: ${sortedStocks.length} Hisse`
-              : `Displayed: ${sortedStocks.length} Assets`}
-          </span>
-        </div>
       </div>
     </div>
   );

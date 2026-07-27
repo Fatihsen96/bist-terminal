@@ -2,20 +2,6 @@ export type MarketCategory = 'BIST' | 'US Markets' | 'Crypto' | 'Forex';
 
 export type SignalType = 'STRONG BUY' | 'BUY' | 'WAIT' | 'OVERVALUED' | 'SELL';
 
-export interface HealthMetrics {
-  profit?: number;    // 0-100
-  debt?: number;      // 0-100
-  value?: number;     // 0-100
-  flow?: number;      // 0-100
-  momentum?: number;  // 0-100
-  sentiment?: number; // 0-100
-  fk?: number;
-  pddd?: number;
-  favok?: number;
-  netVarlik?: number;
-  borc?: number;
-}
-
 export interface HealthBreakdown {
   profit: number;
   fk: number;
@@ -23,6 +9,41 @@ export interface HealthBreakdown {
   favok: number;
   netVarlik: number;
   borc: number;
+}
+
+export interface IndicatorValues {
+  rsi14: number;
+  macd: {
+    macd: number;
+    signal: number;
+    histogram: number;
+  };
+  bollinger: {
+    upper: number;
+    middle: number;
+    lower: number;
+  };
+  most: {
+    most_value: number;
+    ema_value: number;
+    trend: 'BULLISH' | 'BEARISH';
+    is_bullish: boolean;
+  };
+  ema20: number;
+  ema50: number;
+  ema200: number;
+  goldenCross: boolean;
+  volumeBreakout: boolean;
+  volMultiplier: number;
+}
+
+export interface CandleData {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
 }
 
 export interface StockItem {
@@ -34,13 +55,31 @@ export interface StockItem {
   fairPrice?: number; // ADİL DEĞER KOLONU
   currency: string;
   change24h: number;
-  healthDots: number; // 1 to 5
-  valueScore: number; // 0 to 100
+  
+  // PRD v2.0 4-Pillar Scores
+  healthDots?: number;
+  valueScore: number;       // Nihai Hibrit AI Skoru (0-100)
+  technicalScore?: number;  // %35 Ağırlık
+  fundamentalScore?: number;// %30 Ağırlık
+  newsScore?: number;       // %15 Ağırlık
+  analystScore?: number;    // %20 Ağırlık
+  isFourOfFour?: boolean;   // 4/4 Sinyal Uyum Bayrağı
+  
   signal: SignalType;
-  upside: number;     // e.g. +28.4 or -12.8
-  sector: 'Tech' | 'Energy' | 'Healthcare' | 'Finance' | 'Industrials' | 'Consumer' | 'Crypto' | 'Commodity' | string;
   primaryTag?: 'Strong Value' | 'Dividend King' | 'Growth Rebound' | 'High Momentum' | 'Low Beta' | 'AI Outlier' | string;
-  healthBreakdown: HealthBreakdown | HealthMetrics | any;
+  upside: number;           // Adil Değer Prim Potansiyeli %
+  analystUpside?: number;   // Analist Hedef Fiyat Prim Potansiyeli %
+  analystTarget?: number;   // Aracı Kurum Ortalama Hedef Fiyatı
+  
+  sector: string;
+  healthBreakdown: HealthBreakdown | any;
+  technicalHighlights?: string[];
+  fundamentalHighlights?: string[];
+  newsHighlights?: string[];
+  indicatorValues?: IndicatorValues;
+  supports?: number[];
+  resistances?: number[];
+  
   summary: string;
   aiThesis: string;
   peRatio?: number | string;
@@ -49,6 +88,7 @@ export interface StockItem {
   high52w?: number;
   low52w?: number;
   sparkline: number[];
+  candles?: CandleData[];
 }
 
 export interface SignalNews {

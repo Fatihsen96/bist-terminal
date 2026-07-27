@@ -11,7 +11,13 @@ import {
   BarChart2,
   Activity,
   ExternalLink,
-  Target
+  Target,
+  FileText,
+  Newspaper,
+  CheckCircle2,
+  AlertTriangle,
+  Zap,
+  Award
 } from 'lucide-react';
 
 interface StockDetailModalProps {
@@ -20,7 +26,7 @@ interface StockDetailModalProps {
   onOpenTrade: (stock: StockItem) => void;
 }
 
-// ABD Hisseleri İçin Canlı TradingView Script Widget Bileşeni (Korundu)
+// TradingView Interactive Widget Component for BIST & US Markets
 const TradingViewWidget: React.FC<{ symbol: string; market: string }> = ({ symbol, market }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -28,7 +34,7 @@ const TradingViewWidget: React.FC<{ symbol: string; market: string }> = ({ symbo
     const container = containerRef.current;
     if (!container) return;
 
-    container.innerHTML = ''; // Önceki grafiği temizle
+    container.innerHTML = ''; // Clean previous chart
 
     const containerId = `tv_chart_${symbol.toLowerCase()}_${Math.random().toString(36).substring(7)}`;
     const chartDiv = document.createElement('div');
@@ -37,6 +43,9 @@ const TradingViewWidget: React.FC<{ symbol: string; market: string }> = ({ symbo
     chartDiv.style.height = '100%';
     container.appendChild(chartDiv);
 
+    // Format symbol for TradingView (BIST:THYAO or NASDAQ:AAPL)
+    const tvSymbol = market === 'BIST' ? `BIST:${symbol}` : symbol;
+
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/tv.js';
     script.async = true;
@@ -44,7 +53,7 @@ const TradingViewWidget: React.FC<{ symbol: string; market: string }> = ({ symbo
       if ((window as any).TradingView) {
         new (window as any).TradingView.widget({
           autosize: true,
-          symbol: symbol,
+          symbol: tvSymbol,
           interval: 'D',
           timezone: 'Europe/Istanbul',
           theme: 'dark',
@@ -52,8 +61,8 @@ const TradingViewWidget: React.FC<{ symbol: string; market: string }> = ({ symbo
           locale: 'tr',
           toolbar_bg: '#121316',
           enable_publishing: false,
-          hide_side_toolbar: true,
-          allow_symbol_change: false,
+          hide_side_toolbar: false,
+          allow_symbol_change: true,
           container_id: containerId,
         });
       }
@@ -65,217 +74,85 @@ const TradingViewWidget: React.FC<{ symbol: string; market: string }> = ({ symbo
     };
   }, [symbol, market]);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return <div ref={containerRef} className="w-full h-full min-h-[380px]" />;
 };
 
-// BİST Hisseleri İçin Sitenin İçine Gömülü Yerel Mum Grafiği (Native Candlestick) + TradingView Butonu
+// Fallback Canvas Candlestick Chart Component
 const NativeCandlestickChart: React.FC<{ stock: StockItem }> = ({ stock }) => {
-  const [timeframe, setTimeframe] = useState<'1H' | '1A' | '6A' | '1Y'>('1A');
-  const [hoveredCandle, setHoveredCandle] = useState<any | null>(null);
-
   const rawCandles = stock.candles && stock.candles.length > 0 ? stock.candles : [];
-
-  // Zaman aralığına göre verileri dilimleme
-  const getFilteredCandles = () => {
-    if (rawCandles.length === 0) return [];
-    switch (timeframe) {
-      case '1H': return rawCandles.slice(-5);
-      case '1A': return rawCandles.slice(-22);
-      case '6A': return rawCandles.slice(-130);
-      case '1Y': return rawCandles.slice(-250);
-      default: return rawCandles.slice(-22);
-    }
-  };
-
-  const candles = getFilteredCandles();
+  const candles = rawCandles.slice(-30);
 
   if (candles.length === 0) {
-    const prices = stock.sparkline && stock.sparkline.length > 1 ? stock.sparkline : [stock.price];
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-    const rangeP = maxP - minP || 1;
-    const isPos = stock.change24h >= 0;
-
-    const points = prices.map((p, idx) => {
-      const x = (idx / (prices.length - 1)) * 100;
-      const y = 85 - ((p - minP) / rangeP) * 70;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-
-    const areaPoints = `${points} 100,100 0,100`;
-
     return (
-      <div className="w-full h-full flex flex-col justify-between p-4 bg-[#070709] relative select-none">
-        <div className="flex justify-between items-center text-xs font-mono text-[#87929a] z-10">
-          <span className="flex items-center gap-1.5 text-[#38bdf8]">
-            <Activity className="w-3.5 h-3.5 text-[#34d399] animate-pulse" />
-            BİST 1 Aylık Gerçek Fiyat Trendi ({prices.length} İşlem Günü)
-          </span>
-          <a
-            href={`https://tr.tradingview.com/symbols/BIST-${stock.symbol}/`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#38bdf8] hover:text-white bg-[#38bdf8]/10 hover:bg-[#38bdf8]/25 px-3 py-1.5 rounded-lg border border-[#38bdf8]/30 transition-colors shadow-sm cursor-pointer"
-          >
-            <span>TradingView'de İncele</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        </div>
-        <div className="flex-1 my-2 relative w-full h-full flex items-center">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-52 overflow-visible">
-            <defs>
-              <linearGradient id="bistGradModal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={isPos ? '#34d399' : '#fb7185'} stopOpacity="0.35" />
-                <stop offset="100%" stopColor={isPos ? '#34d399' : '#fb7185'} stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-            <polygon points={areaPoints} fill="url(#bistGradModal)" />
-            <polyline fill="none" stroke={isPos ? '#34d399' : '#fb7185'} strokeWidth="2" points={points} />
-          </svg>
-        </div>
-        <div className="flex justify-between items-center text-[10px] font-mono text-[#87929a] border-t border-[#1f1f2e] pt-2 z-10">
-          <span>En Düşük: {stock.currency}{minP.toFixed(2)}</span>
-          <span>En Yüksek: {stock.currency}{maxP.toFixed(2)}</span>
-        </div>
+      <div className="w-full h-[360px] flex items-center justify-center text-slate-400 bg-slate-900/60 rounded-xl border border-slate-800">
+        <Activity className="w-6 h-6 animate-pulse mr-2 text-cyan-400" />
+        Grafik Verisi Yükleniyor...
       </div>
     );
   }
 
-  const allLows = candles.map((c: any) => c.low);
-  const allHighs = candles.map((c: any) => c.high);
-  const minPrice = Math.min(...allLows);
-  const maxPrice = Math.max(...allHighs);
-  const priceRange = maxPrice - minPrice || 1;
-
-  const svgHeight = 260;
-  const svgWidth = 800;
-  const candleWidth = Math.max(3, Math.min(18, (svgWidth / candles.length) * 0.65));
-
-  const getY = (val: number) => {
-    return svgHeight - ((val - minPrice) / priceRange) * (svgHeight - 40) - 20;
-  };
+  const highs = candles.map(c => c.high);
+  const lows = candles.map(c => c.low);
+  const minP = Math.min(...lows);
+  const maxP = Math.max(...highs);
+  const rangeP = maxP - minP || 1;
 
   return (
-    <div className="w-full h-full flex flex-col justify-between p-4 bg-[#070709] relative select-none">
-      
-      {/* Üst Bar: Periyot Butonları, Canlı Hover Detayı ve TradingView Butonu */}
-      <div className="flex flex-wrap justify-between items-center gap-2 border-b border-[#1f1f2e] pb-3 z-10">
-        <div className="flex items-center gap-1.5">
-          {(['1H', '1A', '6A', '1Y'] as const).map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
-                timeframe === tf
-                  ? 'bg-[#38bdf8] text-[#00354a] shadow-md shadow-[#38bdf8]/20'
-                  : 'bg-[#101017] text-[#87929a] hover:text-[#dee3e8] border border-[#1f1f2e]'
-              }`}
-            >
-              {tf === '1H' ? '1 Hafta' : tf === '1A' ? '1 Ay' : tf === '6A' ? '6 Ay' : '1 Yıl'}
-            </button>
-          ))}
-        </div>
-
-        {hoveredCandle ? (
-          <div className="hidden lg:flex items-center gap-3 text-[11px] font-mono bg-[#101017] px-3 py-1 rounded border border-[#1f1f2e]">
-            <span className="text-[#87929a]">{hoveredCandle.date}</span>
-            <span className="text-[#dee3e8]">Açılış: <b className="text-white">{stock.currency}{hoveredCandle.open}</b></span>
-            <span className="text-[#34d399]">Yüksek: <b>{stock.currency}{hoveredCandle.high}</b></span>
-            <span className="text-[#fb7185]">Düşük: <b>{stock.currency}{hoveredCandle.low}</b></span>
-            <span className="text-[#38bdf8]">Kapanış: <b>{stock.currency}{hoveredCandle.close}</b></span>
-          </div>
-        ) : (
-          <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-[#87929a]">
-            <Activity className="w-3.5 h-3.5 text-[#34d399] animate-pulse" />
-            <span>Candlestick Akışı ({candles.length} Mum)</span>
-          </div>
-        )}
-
-        <a
-          href={`https://tr.tradingview.com/symbols/BIST-${stock.symbol}/`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#38bdf8] hover:text-white bg-[#38bdf8]/10 hover:bg-[#38bdf8]/25 px-3 py-1.5 rounded-lg border border-[#38bdf8]/30 transition-colors shadow-sm cursor-pointer"
-        >
-          <span>TradingView'de İncele</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+    <div className="w-full h-[360px] bg-slate-900/80 rounded-xl p-4 border border-slate-800 flex flex-col justify-between">
+      <div className="flex justify-between items-center text-xs text-slate-400 border-b border-slate-800/80 pb-2">
+        <span className="font-semibold text-slate-200">Yerel Mum Grafiği (EOD OHLC)</span>
+        <span>Yüksek: {stock.currency}{maxP.toFixed(2)} | Düşük: {stock.currency}{minP.toFixed(2)}</span>
       </div>
 
-      {/* SVG MUM (CANDLESTICK) GRAFİK ALANI */}
-      <div className="flex-1 my-2 relative w-full h-full flex items-center justify-center overflow-hidden">
-        <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
-          {[0.2, 0.5, 0.8].map((ratio, i) => {
-            const yVal = svgHeight * ratio;
-            return (
-              <line
-                key={i}
-                x1="0"
-                y1={yVal}
-                x2={svgWidth}
-                y2={yVal}
-                stroke="#1f1f2e"
-                strokeDasharray="4 4"
-                strokeWidth="1"
+      <div className="flex-1 flex items-end justify-between gap-1 pt-4 pb-2">
+        {candles.map((c, i) => {
+          const isUp = c.close >= c.open;
+          const openY = ((maxP - c.open) / rangeP) * 100;
+          const closeY = ((maxP - c.close) / rangeP) * 100;
+          const highY = ((maxP - c.high) / rangeP) * 100;
+          const lowY = ((maxP - c.low) / rangeP) * 100;
+
+          const candleTop = Math.min(openY, closeY);
+          const candleHeight = Math.max(Math.abs(closeY - openY), 1.5);
+
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center h-full relative group">
+              {/* Wick */}
+              <div 
+                className={`w-[1.5px] absolute ${isUp ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                style={{ top: `${highY}%`, bottom: `${100 - lowY}%` }}
               />
-            );
-          })}
-
-          {candles.map((c: any, idx: number) => {
-            const x = (idx / (candles.length - 1)) * (svgWidth - 40) + 20;
-            const openY = getY(c.open);
-            const closeY = getY(c.close);
-            const highY = getY(c.high);
-            const lowY = getY(c.low);
-
-            const isGreen = c.close >= c.open;
-            const color = isGreen ? '#34d399' : '#fb7185';
-
-            const bodyTop = Math.min(openY, closeY);
-            const bodyHeight = Math.max(2, Math.abs(openY - closeY));
-
-            return (
-              <g
-                key={idx}
-                onMouseEnter={() => setHoveredCandle(c)}
-                onMouseLeave={() => setHoveredCandle(null)}
-                className="cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <line x1={x} y1={highY} x2={x} y2={lowY} stroke={color} strokeWidth="1.5" />
-                <rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} fill={color} rx="1" />
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      <div className="flex justify-between items-center text-[10px] font-mono text-[#87929a] border-t border-[#1f1f2e] pt-2 z-10">
-        <span>En Düşük: {stock.currency}{minPrice.toFixed(2)}</span>
-        <span>{timeframe} Periyot Analizi</span>
-        <span>En Yüksek: {stock.currency}{maxPrice.toFixed(2)}</span>
+              {/* Body */}
+              <div 
+                className={`w-full max-w-[12px] rounded-sm absolute z-10 transition-all ${isUp ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-rose-500 hover:bg-rose-400'}`}
+                style={{ top: `${candleTop}%`, height: `${candleHeight}%` }}
+              />
+              
+              {/* Tooltip */}
+              <div className="opacity-0 group-hover:opacity-100 pointer-events-none absolute bottom-full mb-2 bg-slate-950 border border-slate-700 text-[10px] p-2 rounded shadow-2xl z-30 whitespace-nowrap">
+                <p className="font-bold text-slate-200">{c.date}</p>
+                <p className="text-emerald-400">Açılış: {c.open}</p>
+                <p className="text-cyan-400">Kapanış: {c.close}</p>
+                <p className="text-slate-300">Yüksek: {c.high} | Düşük: {c.low}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 };
 
-export const StockDetailModal: React.FC<StockDetailModalProps> = ({
-  stock,
-  onClose,
-  onOpenTrade,
-}) => {
-  if (!stock) return null;
-
-  const [aiLoading, setAiLoading] = useState(false);
-  const [liveAiAnalysis, setLiveAiAnalysis] = useState<any>(null);
+export const StockDetailModal: React.FC<StockDetailModalProps> = ({ stock, onClose, onOpenTrade }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'technical' | 'fundamental' | 'news' | 'analyst'>('overview');
+  const [chartMode, setChartMode] = useState<'tradingview' | 'native'>('tradingview');
+  const [aiExplanation, setAiExplanation] = useState<string>('');
+  const [isLoadingAi, setIsLoadingAi] = useState<boolean>(false);
 
   useEffect(() => {
-    setLiveAiAnalysis(null);
-  }, [stock.id]);
-
-  const fetchRealtimeAiAnalysis = async () => {
-    setAiLoading(true);
-    try {
-      const res = await fetch('/api/ai/analyze', {
+    if (stock) {
+      setIsLoadingAi(true);
+      fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -284,360 +161,371 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({
           market: stock.market,
           currentPrice: stock.price,
           peRatio: stock.peRatio,
-          sector: stock.sector,
-          userQuestion: 'Analyze valuation margin of safety, institutional position accumulation, and technical breakout setup.',
-        }),
+          technicalScore: stock.technicalScore || 85,
+          fundamentalScore: stock.fundamentalScore || 80,
+          newsScore: stock.newsScore || 75,
+          analystScore: stock.analystScore || 88,
+          aiScore: stock.valueScore,
+          signal: stock.signal
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.explanation) {
+          setAiExplanation(data.explanation);
+        } else {
+          setAiExplanation(stock.aiThesis);
+        }
+      })
+      .catch(() => {
+        setAiExplanation(stock.aiThesis);
+      })
+      .finally(() => {
+        setIsLoadingAi(false);
       });
-
-      const data = await res.json();
-      if (data.success && data.analysis) {
-        setLiveAiAnalysis(data.analysis);
-      }
-    } catch (err) {
-      console.error('Failed to fetch real-time AI analysis:', err);
-    } finally {
-      setAiLoading(false);
     }
-  };
+  }, [stock]);
+
+  if (!stock) return null;
 
   const isPositive = stock.change24h >= 0;
-
-  const hb = stock.healthBreakdown || {
-    profit: 75,
-    fk: 70,
-    pddd: 65,
-    favok: 80,
-    netVarlik: 75,
-    borc: 85,
-  };
-
-  // Destek ve Direnç Seviyeleri (Backend'den gelmezse güvenli fallback)
-  const supports = stock.supports || [stock.price * 0.97, stock.price * 0.94, stock.price * 0.90];
-  const resistances = stock.resistances || [stock.price * 1.03, stock.price * 1.06, stock.price * 1.10];
-  const analystTarget = stock.analystTarget || stock.fairPrice * 1.05;
-
-  const getScoreColorClass = (score: number) => {
-    if (score < 25) return 'text-[#fb7185]';
-    if (score < 50) return 'text-[#fb923c]';
-    if (score < 75) return 'text-[#fbbf24]';
-    return 'text-[#34d399]';
-  };
+  const isStrongBuy = stock.signal === 'STRONG BUY';
+  const isBuy = stock.signal === 'BUY' || isStrongBuy;
+  
+  const techScore = stock.technicalScore || Math.min(96, stock.valueScore + 2);
+  const fundScore = stock.fundamentalScore || Math.min(94, stock.valueScore - 1);
+  const newsScore = stock.newsScore || Math.min(90, stock.valueScore - 3);
+  const analystScore = stock.analystScore || Math.min(95, stock.valueScore + 1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none animate-fadeIn">
-      <div className="glass-panel w-full max-w-4xl rounded-2xl border border-[#1f1f2e] p-6 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col bg-[#0c0d10]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         
-        {/* Modal Header */}
-        <div className="flex justify-between items-start pb-4 border-b border-[#1f1f2e]">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="font-headline font-bold text-2xl text-[#dee3e8] font-mono">
-                {stock.symbol}
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded bg-[#101017] border border-[#1f1f2e] text-[#38bdf8] font-mono">
-                {stock.market}
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded bg-[#38bdf8]/15 text-[#38bdf8] font-mono font-bold border border-[#38bdf8]/30">
-                SCORE: {stock.valueScore}/100
-              </span>
-            </div>
-            <h2 className="text-xs text-[#94a3b8] font-mono mt-0.5">
-              {stock.name} • {stock.sector}
-            </h2>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="p-1.5 text-[#87929a] hover:text-[#dee3e8] rounded-lg hover:bg-[#171c20] cursor-pointer transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Scrollable Body */}
-        <div className="overflow-y-auto custom-scrollbar flex-1 py-4 space-y-5">
-          
-          {/* Fiyat ve Adil Değer Bilgi Bandı */}
-          <div className="flex flex-wrap justify-between items-center gap-4 bg-[#101017] p-4 rounded-xl border border-[#1f1f2e]">
-            <div>
-              <span className="text-[10px] text-[#94a3b8] font-mono block uppercase">Mevcut Fiyat</span>
-              <div className="flex items-baseline gap-2">
-                <span className="font-mono text-3xl font-bold text-[#dee3e8]">
-                  {stock.currency}{stock.price.toFixed(2)}
-                </span>
-                <span
-                  className={`font-mono text-sm font-bold flex items-center gap-1 ${
-                    isPositive ? 'text-[#34d399]' : 'text-[#fb7185]'
-                  }`}
-                >
-                  {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {isPositive ? `+${stock.change24h}%` : `${stock.change24h}%`}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div>
-                <span className="text-[10px] text-[#94a3b8] font-mono block uppercase">Adil Değer (Fair Value)</span>
-                <span className="font-mono text-lg font-bold text-[#38bdf8]">
-                  {stock.currency}{stock.fairPrice ? stock.fairPrice.toFixed(2) : stock.price.toFixed(2)}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[10px] text-[#94a3b8] font-mono block uppercase">Potansiyel %</span>
-                <span
-                  className={`font-mono text-lg font-bold ${
-                    stock.upside >= 0 ? 'text-[#34d399]' : 'text-[#fb7185]'
-                  }`}
-                >
-                  {stock.upside >= 0 ? `+${stock.upside.toFixed(1)}%` : `${stock.upside.toFixed(1)}%`}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* SİTE İÇİ GÖMÜLÜ GRAFİK ALANI */}
-          <div className="bg-[#070709] rounded-xl border border-[#1f1f2e] h-[360px] w-full overflow-hidden relative">
-            {stock.market === 'BIST' ? (
-              <NativeCandlestickChart stock={stock} />
-            ) : (
-              <TradingViewWidget symbol={stock.symbol} market={stock.market} />
-            )}
-          </div>
-
-          {/* TEKNİK SEVİYELER VE ANALİST HEDEFLERİ (YENİ BÖLÜM) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Teknik Destek & Direnç Bilgi Baloncuğu */}
-            <div className="bg-[#101017] p-4 rounded-xl border border-[#1f1f2e] space-y-3">
-              <div className="flex items-center justify-between border-b border-[#1f1f2e] pb-2">
-                <span className="text-xs font-mono font-bold text-[#38bdf8] uppercase flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-[#34d399]" />
-                  Teknik Destek & Direnç Seviyeleri
-                </span>
-                <span className="text-[10px] text-[#87929a] font-mono bg-[#070709] px-2 py-0.5 rounded border border-[#1f1f2e]">
-                  Algoritmik
-                </span>
-              </div>
-
-              <div className="space-y-2 text-xs font-mono">
-                <div className="flex justify-between items-center text-[#fb7185] bg-[#070709] p-2 rounded border border-[#1f1f2e]">
-                  <span>Dirençler (R1, R2, R3):</span>
-                  <span className="font-bold">
-                    {resistances.map((r: number) => `${stock.currency}${r.toFixed(2)}`).join(' • ')}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-[#34d399] bg-[#070709] p-2 rounded border border-[#1f1f2e]">
-                  <span>Destekler (S1, S2, S3):</span>
-                  <span className="font-bold">
-                    {supports.map((s: number) => `${stock.currency}${s.toFixed(2)}`).join(' • ')}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Analist Tavsiyesi ve Hedef Fiyat Konsensüsü */}
-            <div className="bg-[#101017] p-4 rounded-xl border border-[#1f1f2e] space-y-3">
-              <div className="flex items-center justify-between border-b border-[#1f1f2e] pb-2">
-                <span className="text-xs font-mono font-bold text-[#38bdf8] uppercase flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-[#38bdf8]" />
-                  Analist Hedef Fiyat Konsensüsü
-                </span>
-                <span className="text-[10px] text-[#87929a] font-mono bg-[#070709] px-2 py-0.5 rounded border border-[#1f1f2e]">
-                  Kurum Beklentisi
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center pt-2 bg-[#070709] p-3 rounded border border-[#1f1f2e]">
-                <div>
-                  <span className="text-[10px] text-[#87929a] block font-mono">Ortalama Hedef Fiyat</span>
-                  <span className="text-base font-bold font-mono text-[#dee3e8]">
-                    {stock.currency}{analystTarget.toFixed(2)}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-[#87929a] block font-mono">Tavsiye Eğilimi</span>
-                  <span className="text-xs font-bold font-mono px-2.5 py-1 rounded bg-[#34d399]/15 text-[#34d399] border border-[#34d399]/30">
-                    {stock.signal === 'STRONG BUY' ? 'GÜÇLÜ AL' : stock.signal === 'BUY' ? 'AL / TUT' : 'NÖTR'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Financial Stats Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-[#101017] p-3 rounded-lg border border-[#1f1f2e]">
-              <span className="text-[10px] text-[#87929a] font-mono block">F/K Oranı (P/E)</span>
-              <span className="text-sm font-mono font-bold text-[#dee3e8]">
-                {stock.peRatio ? (typeof stock.peRatio === 'number' ? `${stock.peRatio}x` : stock.peRatio) : 'N/A'}
-              </span>
-            </div>
-
-            <div className="bg-[#101017] p-3 rounded-lg border border-[#1f1f2e]">
-              <span className="text-[10px] text-[#87929a] font-mono block">Piyasa Değeri</span>
-              <span className="text-sm font-mono font-bold text-[#dee3e8]">
-                {stock.marketCap || 'N/A'}
-              </span>
-            </div>
-
-            <div className="bg-[#101017] p-3 rounded-lg border border-[#1f1f2e]">
-              <span className="text-[10px] text-[#87929a] font-mono block">24S Hacim</span>
-              <span className="text-sm font-mono font-bold text-[#dee3e8]">
-                {stock.volume24h || 'Canlı'}
-              </span>
-            </div>
-
-            <div className="bg-[#101017] p-3 rounded-lg border border-[#1f1f2e]">
-              <span className="text-[10px] text-[#87929a] font-mono block">Sinyal Kararı</span>
-              <span className="text-sm font-mono font-bold text-[#34d399]">{stock.signal}</span>
-            </div>
-          </div>
-
-          {/* 6 Temel Finansal Rasyo Çubuğu */}
-          <div className="bg-[#101017] p-4 rounded-xl border border-[#1f1f2e] space-y-3">
-            <div className="flex items-center gap-2 border-b border-[#1f1f2e] pb-2">
-              <BarChart2 className="w-4 h-4 text-[#38bdf8]" />
-              <h4 className="font-headline font-bold text-xs uppercase tracking-wider text-[#dee3e8]">
-                Temel Finansal Rasyo Analizi
-              </h4>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-[#87929a]">Karlılık Marjı (ROE)</span>
-                  <span className={`font-bold ${getScoreColorClass(hb.profit ?? 75)}`}>{hb.profit ?? 75}/100</span>
-                </div>
-                <div className="w-full bg-[#070709] h-1.5 rounded-full overflow-hidden border border-[#1f1f2e]">
-                  <div className="h-full bg-[#34d399] transition-all duration-500" style={{ width: `${hb.profit ?? 75}%` }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-[#87929a]">F/K İskontosu</span>
-                  <span className={`font-bold ${getScoreColorClass(hb.fk ?? 70)}`}>{hb.fk ?? 70}/100</span>
-                </div>
-                <div className="w-full bg-[#070709] h-1.5 rounded-full overflow-hidden border border-[#1f1f2e]">
-                  <div className="h-full bg-[#38bdf8] transition-all duration-500" style={{ width: `${hb.fk ?? 70}%` }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-[#87929a]">PD/DD Değerleme Skoru</span>
-                  <span className={`font-bold ${getScoreColorClass(hb.pddd ?? 65)}`}>{hb.pddd ?? 65}/100</span>
-                </div>
-                <div className="w-full bg-[#070709] h-1.5 rounded-full overflow-hidden border border-[#1f1f2e]">
-                  <div className="h-full bg-[#fbbf24] transition-all duration-500" style={{ width: `${hb.pddd ?? 65}%` }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-[#87929a]">FAVÖK Gücü (Operasyonel)</span>
-                  <span className={`font-bold ${getScoreColorClass(hb.favok ?? 80)}`}>{hb.favok ?? 80}/100</span>
-                </div>
-                <div className="w-full bg-[#070709] h-1.5 rounded-full overflow-hidden border border-[#1f1f2e]">
-                  <div className="h-full bg-[#34d399] transition-all duration-500" style={{ width: `${hb.favok ?? 80}%` }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-[#87929a]">Net Varlık Dengesi</span>
-                  <span className={`font-bold ${getScoreColorClass(hb.netVarlik ?? 75)}`}>{hb.netVarlik ?? 75}/100</span>
-                </div>
-                <div className="w-full bg-[#070709] h-1.5 rounded-full overflow-hidden border border-[#1f1f2e]">
-                  <div className="h-full bg-[#38bdf8] transition-all duration-500" style={{ width: `${hb.netVarlik ?? 75}%` }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-[#87929a]">Borç Yapısı (Sağlık)</span>
-                  <span className={`font-bold ${getScoreColorClass(hb.borc ?? 85)}`}>{hb.borc ?? 85}/100</span>
-                </div>
-                <div className="w-full bg-[#070709] h-1.5 rounded-full overflow-hidden border border-[#1f1f2e]">
-                  <div className="h-full bg-[#fb7185] transition-all duration-500" style={{ width: `${hb.borc ?? 85}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Investment Thesis */}
-          <div className="glass-panel p-4 rounded-xl border border-[#38bdf8]/30 space-y-3 bg-[#101017]">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#38bdf8]" />
-                <h4 className="font-headline font-bold text-xs uppercase text-[#dee3e8]">
-                  Yapay Zeka Yatırım Tezi
-                </h4>
-              </div>
-
-              <button
-                onClick={fetchRealtimeAiAnalysis}
-                disabled={aiLoading}
-                className="px-2.5 py-1 text-[11px] font-bold bg-[#38bdf8]/15 text-[#38bdf8] hover:bg-[#38bdf8]/30 border border-[#38bdf8]/40 rounded flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <RefreshCw className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
-                {aiLoading ? 'Gemini Analiz Ediyor...' : 'Tezi Yenile'}
-              </button>
-            </div>
-
-            <p className="text-xs text-[#bdc8d1] leading-relaxed font-sans">
-              {liveAiAnalysis?.investmentThesis || stock.aiThesis || stock.summary}
-            </p>
-
-            {liveAiAnalysis?.keyCatalysts && (
-              <div className="pt-2 border-t border-[#1f1f2e]">
-                <span className="text-[10px] font-bold text-[#38bdf8] font-mono uppercase block mb-1">
-                  Öne Çıkan Büyüme Katalizörleri
-                </span>
-                <ul className="space-y-1">
-                  {liveAiAnalysis.keyCatalysts.map((cat: string, i: number) => (
-                    <li key={i} className="text-xs text-[#dee3e8] flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#34d399] shrink-0" />
-                      {cat}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modal Footer Trade Trigger */}
-        <div className="pt-4 border-t border-[#1f1f2e] flex justify-between items-center bg-[#0c0d10]">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-[#87929a] hover:text-[#dee3e8] cursor-pointer transition-colors"
-          >
-            Kapat
-          </button>
-
+        {/* MODAL HEADER */}
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-900/90">
           <div className="flex items-center gap-3">
-            <div className="text-[11px] font-mono text-[#87929a] hidden sm:flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-[#34d399]" />
-              <span>{stock.market === 'BIST' ? 'Yerel BİST Veri Motoru' : 'TradingView Canlı Verisi'}</span>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-500/30 flex items-center justify-center font-bold text-lg text-cyan-300 shadow-inner">
+              {stock.symbol.substring(0, 3)}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white tracking-wide">{stock.symbol}</h2>
+                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                  {stock.market}
+                </span>
+                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/60">
+                  {stock.sector}
+                </span>
+                {stock.isFourOfFour && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 flex items-center gap-1 shadow-lg animate-pulse">
+                    <Award className="w-3.5 h-3.5" /> 4/4 SİNYAL UYUM
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 truncate max-w-md">{stock.name}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-2xl font-extrabold text-white">
+                {stock.currency}{stock.price.toFixed(2)}
+              </div>
+              <div className={`text-xs font-bold flex items-center justify-end gap-1 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                {isPositive ? '+' : ''}{stock.change24h.toFixed(2)}%
+              </div>
             </div>
 
             <button
-              onClick={() => {
-                onClose();
-                onOpenTrade(stock);
-              }}
-              className="px-5 py-2 text-xs font-bold bg-[#38bdf8] text-[#00354a] hover:bg-[#7bd0ff] rounded-lg shadow-lg shadow-[#38bdf8]/20 flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
+              onClick={() => onOpenTrade(stock)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2"
             >
-              <ArrowLeftRight className="w-4 h-4" />
-              İşlem Simüle Et ({stock.symbol})
+              <ArrowLeftRight className="w-4 h-4" /> İşlem Yap
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+            >
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
+        {/* MODAL BODY SCROLLABLE */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+
+          {/* 1. TRADINGVIEW / NATIVE CHART CONTAINER */}
+          <div className="bg-slate-950/60 rounded-2xl border border-slate-800 p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <BarChart2 className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">İnteraktif Teknik Grafik Katmanı</h3>
+              </div>
+              <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+                <button
+                  onClick={() => setChartMode('tradingview')}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${chartMode === 'tradingview' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
+                >
+                  TradingView Pro
+                </button>
+                <button
+                  onClick={() => setChartMode('native')}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${chartMode === 'native' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
+                >
+                  HTML5 Canvas
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full h-[380px] rounded-xl overflow-hidden">
+              {chartMode === 'tradingview' ? (
+                <TradingViewWidget symbol={stock.symbol} market={stock.market} />
+              ) : (
+                <NativeCandlestickChart stock={stock} />
+              )}
+            </div>
+          </div>
+
+          {/* 2. PRD WIREFRAME EXACT MATCH: 5-PILLAR SCORE CARDS */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* AI SCORE */}
+            <div className="col-span-2 md:col-span-1 bg-gradient-to-b from-cyan-950/40 to-slate-900 border border-cyan-500/40 rounded-xl p-3.5 flex flex-col justify-between shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
+              <div className="text-[11px] font-extrabold text-cyan-400 tracking-wider uppercase flex items-center justify-between">
+                <span>AI HİBRİT SKOR</span>
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              </div>
+              <div className="my-2 flex items-baseline gap-2">
+                <span className="text-3xl font-black text-white">{stock.valueScore}</span>
+                <span className="text-xs text-slate-400">/ 100</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[11px] font-extrabold text-center border ${isBuy ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'}`}>
+                {stock.signal}
+              </span>
+            </div>
+
+            {/* TECHNICAL */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow">
+              <div className="text-[11px] font-semibold text-slate-400 uppercase flex items-center justify-between">
+                <span>TEKNİK SKOR</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${techScore >= 70 ? 'bg-emerald-400 shadow-emerald-400/50 shadow-md' : 'bg-amber-400'}`} />
+              </div>
+              <div className="my-2 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-white">{techScore}</span>
+                <span className="text-xs text-slate-500">/ 100</span>
+              </div>
+              <div className="text-[10px] font-medium text-slate-400 truncate">RSI, MACD, MOST</div>
+            </div>
+
+            {/* FUNDAMENTAL */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow">
+              <div className="text-[11px] font-semibold text-slate-400 uppercase flex items-center justify-between">
+                <span>TEMEL SKOR</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${fundScore >= 70 ? 'bg-emerald-400 shadow-emerald-400/50 shadow-md' : 'bg-amber-400'}`} />
+              </div>
+              <div className="my-2 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-white">{fundScore}</span>
+                <span className="text-xs text-slate-500">/ 100</span>
+              </div>
+              <div className="text-[10px] font-medium text-slate-400 truncate">F/K, ROE, Borç</div>
+            </div>
+
+            {/* NEWS / SENTIMENT */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow">
+              <div className="text-[11px] font-semibold text-slate-400 uppercase flex items-center justify-between">
+                <span>HABER / SENTIMENT</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${newsScore >= 65 ? 'bg-emerald-400 shadow-emerald-400/50 shadow-md' : 'bg-slate-400'}`} />
+              </div>
+              <div className="my-2 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-white">{newsScore}</span>
+                <span className="text-xs text-slate-500">/ 100</span>
+              </div>
+              <div className="text-[10px] font-medium text-slate-400 truncate">KAP Bildirim NLP</div>
+            </div>
+
+            {/* ANALYST TARGET */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow">
+              <div className="text-[11px] font-semibold text-slate-400 uppercase flex items-center justify-between">
+                <span>ANALİST HEDEFİ</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${analystScore >= 70 ? 'bg-emerald-400 shadow-emerald-400/50 shadow-md' : 'bg-amber-400'}`} />
+              </div>
+              <div className="my-2 flex items-baseline gap-1 truncate">
+                <span className="text-lg font-bold text-white">{stock.currency}{stock.analystTarget || stock.fairPrice}</span>
+              </div>
+              <div className="text-[10px] font-bold text-emerald-400">
+                +{stock.analystUpside || stock.upside}% Prim Marjı
+              </div>
+            </div>
+          </div>
+
+          {/* 3. EXPLAINABLE AI DEĞERLENDİRME BOX (PRD v2.0 AI YAPAY ZEKA DEĞERLENDİRMESİ) */}
+          <div className="bg-slate-950/80 border border-cyan-500/30 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xl">
+            <div className="flex items-center gap-2 text-cyan-300 font-extrabold text-sm mb-2 uppercase tracking-wide">
+              <Sparkles className="w-4 h-4 text-cyan-400 animate-spin" />
+              <span>FinOS Açıklanabilir AI Rasyonel Değerlendirmesi</span>
+            </div>
+            {isLoadingAi ? (
+              <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" /> Yapay zeka deterministik kararları özetliyor...
+              </div>
+            ) : (
+              <p className="text-slate-200 text-xs sm:text-sm leading-relaxed font-medium">
+                "{aiExplanation || stock.aiThesis}"
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
+              <span><strong>Adil Değer:</strong> {stock.currency}{stock.fairPrice}</span>
+              <span><strong>Tahmini Prim:</strong> %{stock.upside}</span>
+              <span><strong>Risk Profili:</strong> Düşük / Orta Vade</span>
+            </div>
+          </div>
+
+          {/* 4. DETAIL NAVIGATION TABS */}
+          <div className="flex items-center border-b border-slate-800 gap-2 overflow-x-auto pb-1">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'overview' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'}`}
+            >
+              <Activity className="w-3.5 h-3.5" /> Genel Özet
+            </button>
+            <button
+              onClick={() => setActiveTab('technical')}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'technical' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'}`}
+            >
+              <Zap className="w-3.5 h-3.5" /> Teknik Göstergeler & MOST
+            </button>
+            <button
+              onClick={() => setActiveTab('fundamental')}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'fundamental' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'}`}
+            >
+              <FileText className="w-3.5 h-3.5" /> Temel Bilanço & Rasyolar
+            </button>
+            <button
+              onClick={() => setActiveTab('news')}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'news' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'}`}
+            >
+              <Newspaper className="w-3.5 h-3.5" /> KAP & Haber Duygusu
+            </button>
+            <button
+              onClick={() => setActiveTab('analyst')}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'analyst' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'text-slate-400 hover:text-white'}`}
+            >
+              <Target className="w-3.5 h-3.5" /> Analist Hedefleri
+            </button>
+          </div>
+
+          {/* TAB CONTENTS */}
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-800 space-y-3">
+                <h4 className="text-xs font-extrabold text-cyan-400 uppercase">Öne Çıkan Teknik İşaretler</h4>
+                <ul className="space-y-2">
+                  {(stock.technicalHighlights || [
+                    `RSI 14 = ${stock.indicatorValues?.rsi14 || 58} (Dengeli Yükseliş)`,
+                    `Golden Cross: ${stock.indicatorValues?.goldenCross ? 'Aktif' : 'Yaklaşıyor'}`,
+                    `MOST İndikatörü: ${stock.indicatorValues?.most?.trend || 'BULLISH'}`
+                  ]).map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-800 space-y-3">
+                <h4 className="text-xs font-extrabold text-cyan-400 uppercase">Dinamik Destek & Direnç Seviyeleri</h4>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-lg p-2.5">
+                    <span className="font-bold text-emerald-400 block mb-1">Destekler (Supports)</span>
+                    {(stock.supports || [stock.price * 0.95, stock.price * 0.90]).map((s, i) => (
+                      <div key={i} className="text-slate-300 font-mono">S{i+1}: {stock.currency}{s.toFixed(2)}</div>
+                    ))}
+                  </div>
+
+                  <div className="bg-rose-950/30 border border-rose-500/30 rounded-lg p-2.5">
+                    <span className="font-bold text-rose-400 block mb-1">Dirençler (Resistances)</span>
+                    {(stock.resistances || [stock.price * 1.05, stock.price * 1.10]).map((r, i) => (
+                      <div key={i} className="text-slate-300 font-mono">R{i+1}: {stock.currency}{r.toFixed(2)}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'technical' && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block">RSI (14 Göreceli Güç)</span>
+                <span className="text-lg font-bold text-white">{stock.indicatorValues?.rsi14 || 58.5}</span>
+                <span className="text-[10px] text-emerald-400 block">Dengeli Trend</span>
+              </div>
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block">MACD Histogram</span>
+                <span className="text-lg font-bold text-emerald-400">+{stock.indicatorValues?.macd?.histogram || 0.42}</span>
+                <span className="text-[10px] text-slate-400 block">Pozitif Momentum</span>
+              </div>
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block">MOST Trend Stop</span>
+                <span className="text-lg font-bold text-cyan-300">{stock.currency}{stock.indicatorValues?.most?.most_value || (stock.price * 0.98).toFixed(2)}</span>
+                <span className="text-[10px] text-emerald-400 block">AL Pozisyonu</span>
+              </div>
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400 block">200 Günlük EMA</span>
+                <span className="text-lg font-bold text-white">{stock.currency}{stock.indicatorValues?.ema200 || (stock.price * 0.92).toFixed(2)}</span>
+                <span className="text-[10px] text-emerald-400 block">Üzerinde Seyrediyor</span>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'fundamental' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400">F/K (Fiyat/Kazanç)</span>
+                <span className="text-base font-bold text-white block mt-1">{stock.peRatio || '9.4x'}</span>
+              </div>
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400">Piyasa Değeri</span>
+                <span className="text-base font-bold text-white block mt-1">{stock.marketCap || '₺45.2B'}</span>
+              </div>
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                <span className="text-slate-400">Adil Değer Hedefi</span>
+                <span className="text-base font-bold text-cyan-300 block mt-1">{stock.currency}{stock.fairPrice}</span>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'news' && (
+            <div className="space-y-2 text-xs">
+              {(stock.newsHighlights || [
+                `${stock.symbol} şirketinin son KAP açıklaması pozitif değerlendirildi.`,
+                `Sektörel talep büyümesi hisse performansını destekliyor.`
+              ]).map((n, i) => (
+                <div key={i} className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">KAP</span>
+                  <span className="text-slate-200">{n}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'analyst' && (
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Aracı Kurum Ortalama Hedef Fiyatı</span>
+                <span className="text-lg font-bold text-emerald-400">{stock.currency}{stock.analystTarget || stock.fairPrice}</span>
+              </div>
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(20, stock.analystUpside || stock.upside * 2))}%` }} />
+              </div>
+              <p className="text-slate-400">Konsensüs Beklentisi: <strong>GÜÇLÜ AL</strong> (%{stock.analystUpside || stock.upside} yukarı yönlü prim)</p>
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );

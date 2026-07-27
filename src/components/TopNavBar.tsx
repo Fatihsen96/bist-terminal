@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MarketCategory } from '../types';
+import { MarketCategory, StockItem } from '../types';
 import { 
   Bell, 
   Search, 
@@ -7,7 +7,10 @@ import {
   ArrowLeftRight, 
   Sparkles,
   Globe,
-  X
+  X,
+  Award,
+  TrendingUp,
+  CheckCircle2
 } from 'lucide-react';
 
 interface TopNavBarProps {
@@ -20,6 +23,8 @@ interface TopNavBarProps {
   notificationCount: number;
   currentLang: 'en' | 'tr';
   setLang: (lang: 'en' | 'tr') => void;
+  fourOfFourStocks?: StockItem[];
+  onSelectStock?: (stock: StockItem) => void;
 }
 
 export const TopNavBar: React.FC<TopNavBarProps> = ({
@@ -32,22 +37,23 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
   notificationCount,
   currentLang,
   setLang,
+  fourOfFourStocks = [],
+  onSelectStock
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const markets: MarketCategory[] = ['BIST', 'US Markets'];
 
-  const sampleNotifications = [
-    { id: '1', title: 'META Signal Alert', text: 'Strong Buy score upgraded to 92 based on Q2 free cash flow metrics.', time: '12m ago' },
-  ];
+  const fourOfFourCount = fourOfFourStocks.length;
+  const totalNotifications = (notificationCount || 1) + fourOfFourCount;
 
   return (
     <header className="h-14 flex items-center justify-between px-6 w-full border-b border-[#1f1f2e] bg-[#0f1418]/90 backdrop-blur-md z-40 relative select-none">
       {/* Brand & Market Tabs */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
-          <span className="font-headline font-bold text-lg text-[#dee3e8] tracking-tight">MarketTerminal</span>
+          <span className="font-headline font-bold text-lg text-[#dee3e8] tracking-tight">FinOS</span>
           <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/30">
-            PRO AI
+            PRD v2.0 AI
           </span>
         </div>
 
@@ -78,7 +84,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={currentLang === 'tr' ? `${selectedMarket} hisselerini ara...` : `Search ${selectedMarket} tickers...`}
+          placeholder={currentLang === 'tr' ? `${selectedMarket} hisselerini ara (örn: ORGE, THYAO)...` : `Search ${selectedMarket} tickers...`}
           className="w-full pl-9 pr-3 py-1.5 bg-[#070709] border border-[#1f1f2e] rounded-lg text-xs text-[#dee3e8] placeholder-[#87929a] focus:outline-none focus:border-[#38bdf8] transition-colors font-mono"
         />
         {searchQuery && (
@@ -91,77 +97,103 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
         )}
       </div>
 
-      {/* Right Actions, Language Switcher & Profile */}
+      {/* Right Actions, Notification & Profile */}
       <div className="flex items-center gap-3">
-        {/* Dil Değiştirici Buton: Eğer şu an TR'deysek butonda "EN" yazar (İngilizce'ye geçmek için). 
-            Eğer EN'deysek butonda "TR" yazar (Türkçe'ye geçmek için). */}
+        {/* Language Switcher */}
         <button
           onClick={() => setLang(currentLang === 'tr' ? 'en' : 'tr')}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#101017] hover:bg-[#1f1f2e] border border-[#1f1f2e] rounded-lg text-xs font-mono font-bold text-[#38bdf8] transition-all cursor-pointer shadow-sm"
-          title={currentLang === 'tr' ? "Switch to English" : "Türkçe'ye Geç"}
+          title="Change language / Dili değiştir"
         >
           <Globe className="w-3.5 h-3.5" />
           <span>{currentLang === 'tr' ? 'EN' : 'TR'}</span>
         </button>
 
-        {/* Deposit Button */}
         <button
           onClick={onOpenDeposit}
-          className="px-3.5 py-1.5 text-xs font-bold bg-[#45dfa4] text-[#003825] hover:bg-[#34d399] rounded-lg transition-transform active:scale-95 flex items-center gap-1.5 shadow-md shadow-[#45dfa4]/10 cursor-pointer"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#101017] hover:bg-[#1f1f2e] border border-[#1f1f2e] rounded-lg text-xs font-medium text-[#bdc8d1] hover:text-[#dee3e8] transition-all cursor-pointer"
         >
-          <PlusCircle className="w-3.5 h-3.5" />
-          {currentLang === 'tr' ? 'Cüzdan' : 'Deposit'}
+          <PlusCircle className="w-3.5 h-3.5 text-[#38bdf8]" />
+          <span>{currentLang === 'tr' ? 'Bakiye Ekle' : 'Deposit'}</span>
         </button>
 
-        {/* Trade Button */}
         <button
           onClick={onOpenTrade}
-          className="px-3.5 py-1.5 text-xs font-bold bg-[#38bdf8] text-[#004965] hover:bg-[#7bd0ff] rounded-lg transition-transform active:scale-95 flex items-center gap-1.5 shadow-md shadow-[#38bdf8]/10 cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-lg text-xs transition-all cursor-pointer shadow-md"
         >
           <ArrowLeftRight className="w-3.5 h-3.5" />
-          {currentLang === 'tr' ? 'İşlem' : 'Trade'}
+          <span>{currentLang === 'tr' ? 'Hızlı Al / Sat' : 'Trade'}</span>
         </button>
 
-        <div className="h-5 w-px bg-[#1f1f2e] mx-1"></div>
-
-        {/* Notifications */}
+        {/* NOTIFICATION BELL WITH 4/4 ALIGNMENT ALERT BADGE */}
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 text-[#bdc8d1] hover:text-[#38bdf8] transition-colors rounded-lg hover:bg-[#101017] relative cursor-pointer"
+            className="p-2 bg-[#101017] hover:bg-[#1f1f2e] border border-[#1f1f2e] rounded-lg text-[#bdc8d1] hover:text-[#dee3e8] transition-all cursor-pointer relative"
           >
-            <Bell className="w-4 h-4" />
-            {notificationCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#fb7185]" />
+            <Bell className="w-4 h-4 text-amber-400" />
+            {totalNotifications > 0 && (
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 border border-slate-900 animate-pulse">
+                {totalNotifications}
+              </span>
             )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 glass-panel rounded-xl p-3 z-50 border border-[#1f1f2e] shadow-2xl">
-              <div className="flex justify-between items-center pb-2 border-b border-[#1f1f2e] mb-2">
-                <span className="text-xs font-bold font-headline text-[#dee3e8] uppercase tracking-wider">
-                  {currentLang === 'tr' ? 'Bildirimler' : 'Notifications'}
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0f1418] border border-[#1f1f2e] rounded-xl shadow-2xl p-4 z-50 space-y-3">
+              <div className="flex items-center justify-between border-b border-[#1f1f2e] pb-2">
+                <div className="flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  <h4 className="text-xs font-extrabold text-white uppercase tracking-wider">
+                    {currentLang === 'tr' ? 'FinOS Live Sinyal Bildirimleri' : 'Live Signal Notifications'}
+                  </h4>
+                </div>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold">
+                  {fourOfFourCount} Adet 4/4 Uyum
                 </span>
               </div>
-              <div className="space-y-2">
-                {sampleNotifications.map((n) => (
-                  <div key={n.id} className="p-2.5 rounded-lg bg-[#101017] border border-[#1f1f2e]">
-                    <div className="text-xs font-bold text-white mb-1">{n.title}</div>
-                    <p className="text-[11px] text-[#bdc8d1]">{n.text}</p>
-                  </div>
-                ))}
-              </div>
+
+              {fourOfFourStocks.length > 0 ? (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {fourOfFourStocks.map((s) => (
+                    <div
+                      key={s.symbol}
+                      onClick={() => {
+                        if (onSelectStock) onSelectStock(s);
+                        setShowNotifications(false);
+                      }}
+                      className="p-2.5 bg-[#171c22] hover:bg-[#1f262e] rounded-lg border border-amber-500/30 cursor-pointer transition-all flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-xs">{s.symbol}</span>
+                          <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded">
+                            4/4 GÜÇLÜ AL
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Teknik (%{s.technicalScore}) • Temel (%{s.fundamentalScore}) • Haber (%{s.newsScore}) • Analist (%{s.analystScore})
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-white block">{s.currency}{s.price}</span>
+                        <span className="text-[10px] font-bold text-emerald-400">+{s.upside}% Prim</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 bg-[#171c22] rounded-lg text-xs text-slate-400 text-center">
+                  Henüz 4/4 sinyal uyumu yakalayan hisse taranıyor...
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Analyst Avatar */}
-        <div className="w-8 h-8 rounded-full bg-[#101017] border border-[#1f1f2e] flex items-center justify-center overflow-hidden cursor-pointer">
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3QcTL7wU1ef6leUPxx-q3ePdHJf3Y2FTs1J-izSOKRDACFdQOT4ZowuHukggvlTpWCg_KMq_HOw7zOB-USfQ0TT0UStN-XQ2xBTOHPDOz4SWY0rVWlpfugMw7DPC9BX1Bq8RoSJipTvsrcKWn8s9lzrhJSPBYZSXlUniy64DCq3LGEJ4EBhcxbDY5_aC16EgWx79RhyLAFooY4Cg0i2wRg02M3WxlG4z4NburZQgEyzi6E7khS_i3wjSxvlb2KFCPK2J-HjF1tMM"
-            alt="Profile"
-            className="w-full h-full object-cover"
-          />
+        {/* User Profile */}
+        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#38bdf8] to-blue-600 flex items-center justify-center font-bold text-xs text-[#001e2c] border border-[#38bdf8]/40 shadow-sm">
+          FS
         </div>
       </div>
     </header>

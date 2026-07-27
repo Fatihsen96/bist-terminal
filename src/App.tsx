@@ -25,7 +25,7 @@ import { SignalsView } from './components/SignalsView';
 export default function App() {
   // Navigation & Market States
   const [activeTab, setActiveTab] = useState<'screener' | 'markets' | 'signals' | 'portfolio' | 'forum'>('screener');
-  const [selectedMarket, setSelectedMarket] = useState<MarketCategory>('US Markets');
+  const [selectedMarket, setSelectedMarket] = useState<MarketCategory>('BIST');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Language State (Türkçe / İngilizce)
@@ -46,7 +46,7 @@ export default function App() {
   
   // AI Filter States
   const [valuationRange, setValuationRange] = useState<[number, number]>([0, 100]);
-  const [selectedSignals, setSelectedSignals] = useState<string[]>(['Strong Value']);
+  const [selectedSignals, setSelectedSignals] = useState<string[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
@@ -56,11 +56,18 @@ export default function App() {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
-  // Python FastAPI Backend'inden Canlı yfinance Verisi Çekme Köprüsü
+  // Live FastAPI & Express API Data Fetching Bridge
   useEffect(() => {
     if (selectedMarket === 'BIST' || selectedMarket === 'US Markets') {
-      fetch(`http://localhost:8000/api/tara?piyasa=${selectedMarket}`)
-        .then((res) => res.json())
+      const fetchUrl = `/api/tara?piyasa=${selectedMarket}`;
+      fetch(fetchUrl)
+        .then((res) => {
+          if (!res.ok) throw new Error("Express proxy down, trying port 8000");
+          return res.json();
+        })
+        .catch(() => {
+          return fetch(`http://localhost:8000/api/tara?piyasa=${selectedMarket}`).then((r) => r.json());
+        })
         .then((data) => {
           if (data && data.veriler && data.veriler.length > 0) {
             setStocks((prev) => {
@@ -70,10 +77,15 @@ export default function App() {
           }
         })
         .catch((err) => {
-          console.error("Python FastAPI bağlantı hatası (Canlı veri alınamadı):", err);
+          console.warn("Canlı veri bağlantı uyarısı (Varsayılan veriler kullanılıyor):", err);
         });
     }
   }, [selectedMarket]);
+
+  // Compute 4/4 Alignment Stocks for Navbar Notification Alert
+  const fourOfFourStocks = useMemo(() => {
+    return stocks.filter((s) => s.isFourOfFour);
+  }, [stocks]);
 
   // Toggle Signals in Filter Sidebar
   const toggleSignalFilter = (sig: string) => {
@@ -218,6 +230,8 @@ export default function App() {
           notificationCount={2}
           currentLang={lang}
           setLang={setLang}
+          fourOfFourStocks={fourOfFourStocks}
+          onSelectStock={(st) => setDetailModalStock(st)}
         />
         {/* Content Views */}
         <div className="flex-1 flex overflow-hidden">
