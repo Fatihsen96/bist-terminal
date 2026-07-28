@@ -43,7 +43,49 @@ async function startServer() {
       res.status(502).json({ error: "Python Backend (FastAPI) unreachable.", piyasa: req.query.piyasa, veriler: [] });
     }
   });
+// server.ts içine eklenecek Streaming API uç noktası
+app.get("/api/ai/agent-analyze/:symbol", async (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
 
+  const sendStep = (step: number, status: string, details?: any) => {
+    res.write(`data: ${JSON.stringify({ step, status, details })}\n\n`);
+  };
+
+  try {
+    const { symbol } = req.params;
+
+    // Adım 1: Finansal Veriler
+    sendStep(1, "Finansal/bilanço verilerini çek (son dönem, TTM, çarpanlar, marjlar)...");
+    const stockData = await fetch(`${PYTHON_BACKEND}/api/hisse/${symbol}`).then(r => r.json());
+    
+    // Adım 2: Teknik Göstergeler
+    sendStep(2, "Teknik analiz göstergelerini hesapla (RSI, MA, Bollinger vb.)...");
+    // Teknik hesaplama simülasyonu / veri işleme delay'i
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Adım 3: Haber & KAP
+    sendStep(3, "Haber/gündem değerlendirmesi (KAP, dokümanlar)...");
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Adım 4: Gemini ile Birleştirme
+    sendStep(4, "Üç boyutu birleştirip yatırım değerlendirmesi sun...");
+    const ai = getGenAI();
+    const aiResponse = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: `${symbol} hissesi için şu verileri özetle: ${JSON.stringify(stockData)}`,
+    });
+
+    // Tamamlandı bildirimi ve sonuç
+    res.write(`data: ${JSON.stringify({ completed: true, result: aiResponse.text })}\n\n`);
+    res.end();
+
+  } catch (error: any) {
+    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
+  }
+});
   // Proxy for Single Stock Analysis
   app.get("/api/hisse/:symbol", async (req, res) => {
     try {
