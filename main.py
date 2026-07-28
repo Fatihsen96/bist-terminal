@@ -91,7 +91,23 @@ CACHE_TTL = 300  # 5 dakika saklanır
 # ----------------────────────────-----------------------------------------
 # TEKNİK İNDİKATÖR HESAPLAMA MOTORU
 # ----------------────────────────-----------------------------------------
+import feedparser # requirements.txt'e feedparser ekleyin
 
+@app.get("/api/news/{symbol}")
+def get_live_news(symbol: str):
+    # Google News BIST RSS Akışı
+    rss_url = f"https://news.google.com/rss/search?q={symbol}+borsa+istanbul&hl=tr&gl=TR&ceid=TR:tr"
+    feed = feedparser.parse(rss_url)
+    news_items = []
+    
+    for entry in feed.entries[:5]:
+        news_items.append({
+            "title": entry.title,
+            "link": entry.link,
+            "pubDate": entry.published,
+            "source": entry.source.title if hasattr(entry, 'source') else "BIST Haber"
+        })
+    return {"symbol": symbol, "news": news_items}
 def calculate_rsi(series: pd.Series, period: int = 14) -> float:
     """RSI (Relative Strength Index - Göreceli Güç Endeksi) Hesabı"""
     try:
