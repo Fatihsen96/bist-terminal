@@ -250,13 +250,13 @@ export default function App() {
                 currentLang={lang}
               />
               {/* Main Screener Dashboard */}
-              <section className="flex-1 p-5 overflow-y-auto custom-scrollbar flex flex-col gap-5">
+              <section className="flex-1 p-5 overflow-hidden flex flex-col gap-5">
                 {/* KPI Glass Cards */}
                 <KPIGlassCards filteredCount={filteredStocks.length} marketName={selectedMarket} currentLang={lang} />
                 {/* Main Dashboard Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0 overflow-hidden">
                   {/* Leaderboard Table (8 cols) */}
-                  <div className="lg:col-span-8 h-full">
+                  <div className="lg:col-span-8 h-full overflow-hidden">
                     <SignalsTable
                       stocks={filteredStocks}
                       selectedStock={selectedStock}
@@ -265,18 +265,18 @@ export default function App() {
                       currentLang={lang}
                     />
                   </div>
-                  {/* Right Column (4 cols) */}
-                  <div className="lg:col-span-4 flex flex-col gap-5 h-full">
+                  {/* Right Column (4 cols) - Flex & Scroll Kilitli Sağ Panel */}
+                  <div className="lg:col-span-4 flex flex-col gap-4 h-full min-h-0 overflow-hidden">
                     {/* Company Radar Health */}
-                    <div className="h-1/2 min-h-[300px]">
+                    <div className="flex-1 min-h-[220px] overflow-y-auto custom-scrollbar">
                       <RadarChart
                         stock={selectedStock}
                         onOpenDetailModal={(st) => setDetailModalStock(st)}
                         currentLang={lang}
                       />
                     </div>
-                    {/* News Feed */}
-                    <div className="h-1/2 min-h-[280px]">
+                    {/* News Feed - Alta Sabitlenmiş Haber Akışı */}
+                    <div className="shrink-0 h-[280px] overflow-hidden">
                       <NewsFeed
                         newsItems={news}
                         onSelectTicker={(ticker) => {
