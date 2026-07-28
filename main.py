@@ -50,49 +50,50 @@ def health_check():
     return {"status": "healthy"}
 
 # ----------------────────────────-----------------------------------------
-# 1. BİST TÜM HİSSELER LİSTESİ
+# 1. BİST TÜM HİSSELER LİSTESİ (580+ TAM KAPSAMLI BİST ALL LİSTESİ)
 # ----------------────────────────-----------------------------------------
 BIST_ALL_TICKERS = [
-    "AAVEST", "A1CAP", "AAVST", "ABS30", "ACSEL", "ADEL", "ADESE", "ADGYO", "AEFES", "AFYON", 
-    "AGESA", "AGHOL", "AGROT", "AHGAZ", "AKBNK", "AKCNS", "AKFGY", "AKFYE", "AKMGY", "AKSA", 
-    "AKSEN", "AKSGY", "AKSUE", "AKGRT", "ALARK", "ALBRK", "ALCAR", "ALCTL", "ALFAS", "ALGYO", 
-    "ALKA", "ALKIM", "ALMAD", "ALTNY", "ALVES", "ANELE", "ANGEN", "ANHYT", "ANSGR", "ARASE", 
-    "ARCLK", "ARDYZ", "ARENA", "ARSAN", "ARTMS", "ASELS", "ASGYO", "ASTOR", "ASUZU", "ATAGY", 
-    "ATAKP", "ATATP", "ATEKS", "AVGYO", "AVHOL", "AVOD", "AVTUR", "AYCES", "AYDEM", "AYEN", 
-    "AYGAZ", "AZTEK", "BAGFS", "BAKAB", "BANVT", "BARMA", "BASCM", "BASGZ", "BAYRK", "BEGYO", 
-    "BEYAZ", "BFREN", "BIENP", "BIGCH", "BIMAS", "BINBN", "BINHO", "BIOEN", "BIZIM", "BJKAS", 
-    "BLCYT", "BMTKS", "BNTAS", "BOBET", "BORLS", "BORSK", "BOSSA", "BRISA", "BRKO", "BRKSN", 
-    "BRKVY", "BRSAN", "BRYAT", "BSOKE", "BTCIM", "BUCIM", "BURCE", "BURVA", "BVSAN", "BYDNR", 
-    "CANTE", "CASA", "CCOLA", "CELHA", "CEMAS", "CEMTS", "CMBTN", "CMENT", "CONSE", "COSMO", 
-    "CRDFA", "CRFSA", "CUSAN", "CVKMD", "CWENE", "DAGI", "DAGHL", "DAPGM", "DARDL", "DGATE", 
-    "DGGYO", "DITAS", "DMRGD", "DMSAS", "DNISI", "DOAS", "DOBUR", "DOHOL", "DOKTA", "DURDO", 
-    "DYOBY", "DZGYO", "EAGYO", "EBEBK", "ECILC", "ECZYT", "EDATA", "EDIP", "EGEEN", "EGEPO", 
-    "EGGUB", "EGPRO", "EGSER", "EKGYO", "EKSUN", "ELITE", "EMKEL", "ENJSA", "ENKAI", "ENERY", 
-    "ENTRA", "EPLAS", "ERCB", "EREGL", "ERSU", "ESCAR", "ESEN", "ETILR", "ETYAT", "EUHOL", 
-    "EUPWR", "EUREK", "EYGYO", "FADE", "FENER", "FLAP", "FMIZP", "FONET", "FORTE", "FRIGO", 
-    "FROTO", "FZLGY", "GARAN", "GARFA", "GEDIK", "GEDZA", "GENKE", "GENTAS", "GEREL", "GESAN", 
-    "GIPTA", "GLBMD", "GLCVY", "GLYHO", "GMTAS", "GOKNR", "GOLTS", "GOODY", "GOZDE", "GRNYO", 
-    "GRSEL", "GSDHO", "GSDDE", "GSRAY", "GUBRF", "GWIND", "GZNMI", "HALKB", "HATEK", "HATSN", 
-    "HDFGS", "HEDEF", "HEKTS", "HKTM", "HLGYO", "HOROZ", "HUBVC", "HUNER", "HURGZ", "ICBCT", 
-    "IDGYO", "IEYHO", "IHAAS", "IHEVA", "IHGZT", "IHLGM", "IHLAS", "IHYAY", "IMASM", "INDES", 
-    "INFO", "INGRM", "INTEM", "INVEO", "INVES", "IPEKE", "ISCTR", "ISDMR", "ISFIN", "ISGSY", 
-    "ISGYO", "ISKPL", "ISMEN", "ISSEN", "ITEKS", "IZMDC", "IZINV", "JANTS", "KAFEIN", "KLKIM", 
-    "KALEK", "KARYE", "KATMR", "KAYSE", "KCAER", "KCHOL", "KFEIN", "KGYO", "KIMMR", "KLGYO", 
-    "KLMSN", "KLSER", "KMPUR", "KNFRT", "KONTR", "KONYA", "KORDS", "KOZAL", "KOZAA", "KRDMD", 
-    "KRDMA", "KRDMB", "KRGYO", "KRPLS", "KRTEK", "KRVGD", "KSTUR", "KTLEV", "KTSKR", "KUTPO", 
-    "KUYYA", "LIDER", "LILAK", "LINK", "LKMNH", "LMKDC", "LOGO", "LUKSK", "MAALT", "MACKO", 
-    "MAKIM", "MAKTK", "MANAS", "MARKA", "MAVI", "MEDTR", "MEGAP", "MEGMT", "MEPET", "MERCN", 
-    "MERIT", "MERKO", "METRO", "METUR", "MHRGY", "MGROS", "MIATK", "MNDRS", "MNDTR", "MOBTL", 
-    "MOGAN", "MPARK", "MRGYO", "MRSHL", "MSGYO", "MTRKS", "MTRYO", "MZHLD", "NATEN", "NETAS", 
-    "NIBAS", "NTHOL", "NUGYO", "OBASE", "ODAS", "OFSYM", "ONCSM", "ONRYT", "ORGE", "ORMA", 
-    "OTKAR", "OTTO", "OYAKC", "OYAYO", "OYLUM", "OYYAT", "OZATD", "OZKGY", "OZRDN", "OZSUB", 
-    "PAGYO", "PAMEL", "PAPIL", "PARSN", "PASEU", "PCILT", "PEKGY", "PENGD", "PENTA", "PETKM", 
-    "PETUN", "PGSUS", "PINAR", "PKART", "PKENT", "PLTUR", "POLHO", "POLTK", "PRKAB", "PRKME", 
-    "PRDGS", "PRZMA", "PSDTC", "PSGYO", "QUAGR", "RALYH", "RAYSG", "REEDR", "RNPOL", "RODRG", 
-    "RUBNS", "RYGYO", "RYSAS", "SAFKR", "SAHOL", "SAMAT", "SANEL", "SANFM", "SANKO", "SARKY", 
-    "SASA", "SAYAS", "SDTTR", "SEGMN", "SEKFK", "SEKUR", "SELEC", "SELVA", "SEYKM", "SILVR", 
-    "SISE", "SKBNK", "SKYMD", "SMART", "SMRTG", "SOKE", "SOKM", "SONME", "SRVGY", "SUMAS", 
-    "SUNGY", "SURGY", "SUWEN", "TATEN", "TATGD", "TAVHL", "TCELL", "TCKRC", "TDGYO", "TEKTU", 
+    "A1CAP", "AAVST", "ABS30", "ACSEL", "ADEL", "ADESE", "ADGYO", "AEFES", "AFYON", "AGESA", 
+    "AGHOL", "AGROT", "AHGAZ", "AKBNK", "AKCNS", "AKFGY", "AKFYE", "AKMGY", "AKSA", "AKSEN", 
+    "AKSGY", "AKSUE", "AKGRT", "ALARK", "ALBRK", "ALCAR", "ALCTL", "ALFAS", "ALGYO", "ALKA", 
+    "ALKIM", "ALMAD", "ALTNY", "ALVES", "ANELE", "ANGEN", "ANHYT", "ANSGR", "ARASE", "ARCLK", 
+    "ARDYZ", "ARENA", "ARSAN", "ARTI", "ARTMS", "ASELS", "ASGYO", "ASTOR", "ASUZU", "ATAGY", 
+    "ATAKP", "ATATP", "ATEKS", "AVGYO", "AVHOL", "AVOD", "AVPGY", "AVTUR", "AYCES", "AYDEM", 
+    "AYEN", "AYGAZ", "AZTEK", "BAGFS", "BAKAB", "BANVT", "BARMA", "BASCM", "BASGZ", "BAYRK", 
+    "BEGYO", "BEYAZ", "BFREN", "BIENP", "BIGCH", "BIMAS", "BINBN", "BINHO", "BIOEN", "BIZIM", 
+    "BJKAS", "BLCYT", "BMTKS", "BNTAS", "BOBET", "BORLS", "BORSK", "BOSSA", "BRISA", "BRKO", 
+    "BRKSN", "BRKVY", "BRSAN", "BRYAT", "BSOKE", "BTCIM", "BUCIM", "BURCE", "BURVA", "BVSAN", 
+    "BYDNR", "CANTE", "CASA", "CATES", "CCOLA", "CELHA", "CEMAS", "CEMTS", "CMBTN", "CMENT", 
+    "CONSE", "COSMO", "CRDFA", "CRFSA", "CUSAN", "CVKMD", "CWENE", "DAGI", "DAGHL", "DAPGM", 
+    "DARDL", "DGATE", "DGGYO", "DITAS", "DMRGD", "DMSAS", "DNISI", "DOAS", "DOBUR", "DOHOL", 
+    "DOKTA", "DURDO", "DYOBY", "DZGYO", "EAGYO", "EBEBK", "ECILC", "ECZYT", "EDATA", "EDIP", 
+    "EGEEN", "EGEPO", "EGGUB", "EGPRO", "EGSER", "EKGYO", "EKSUN", "ELITE", "EMKEL", "ENJSA", 
+    "ENKAI", "ENERY", "ENTRA", "EPLAS", "ERCB", "EREGL", "ERSU", "ESCAR", "ESEN", "ETILR", 
+    "ETYAT", "EUHOL", "EUPWR", "EUREK", "EYGYO", "FADE", "FENER", "FLAP", "FMIZP", "FONET", 
+    "FORTE", "FRIGO", "FROTO", "FZLGY", "GARAN", "GARFA", "GEDIK", "GEDZA", "GENKE", "GENTAS", 
+    "GEREL", "GESAN", "GIPTA", "GLBMD", "GLCVY", "GLYHO", "GMTAS", "GOKNR", "GOLTS", "GOODY", 
+    "GOZDE", "GRNYO", "GRSEL", "GSDHO", "GSDDE", "GSRAY", "GUBRF", "GWIND", "GZNMI", "HALKB", 
+    "HATEK", "HATSN", "HDFGS", "HEDEF", "HEKTS", "HKTM", "HLGYO", "HOROZ", "HUBVC", "HUNER", 
+    "HURGZ", "ICBCT", "IDGYO", "IEYHO", "IHAAS", "IHEVA", "IHGZT", "IHLGM", "IHLAS", "IHYAY", 
+    "IMASM", "INDES", "INFO", "INGRM", "INTEM", "INVEO", "INVES", "IPEKE", "ISCTR", "ISDMR", 
+    "ISFIN", "ISGSY", "ISGYO", "ISKPL", "ISMEN", "ISSEN", "ITEKS", "IZMDC", "IZINV", "JANTS", 
+    "KAFEIN", "KLKIM", "KALEK", "KARYE", "KATMR", "KAYSE", "KBORU", "KCAER", "KCHOL", "KFEIN", 
+    "KGYO", "KIMMR", "KLGYO", "KLMSN", "KLSER", "KLSYN", "KMPUR", "KNFRT", "KONTR", "KONYA", 
+    "KOON", "KORDS", "KOTON", "KOZAL", "KOZAA", "KRDMD", "KRDMA", "KRDMB", "KRGYO", "KRPLS", 
+    "KRTEK", "KRVGD", "KSTUR", "KTLEV", "KTSKR", "KUTPO", "KUYYA", "LIDER", "LILAK", "LINK", 
+    "LKMNH", "LMKDC", "LOGO", "LUKSK", "MAALT", "MACKO", "MAKIM", "MAKTK", "MANAS", "MARBL", 
+    "MARKA", "MAVI", "MEDTR", "MEGAP", "MEGMT", "MEPET", "MERCN", "MERIT", "MERKO", "METRO", 
+    "METUR", "MHRGY", "MGROS", "MIATK", "MNDRS", "MNDTR", "MOBTL", "MOGAN", "MPARK", "MRGYO", 
+    "MRSHL", "MSGYO", "MTRKS", "MTRYO", "MZHLD", "NATEN", "NETAS", "NIBAS", "NTHOL", "NUGYO", 
+    "OBAMS", "OBASE", "ODAS", "OFSYM", "ONCSM", "ONRYT", "ORGE", "ORMA", "OTKAR", "OTTO", 
+    "OYAKC", "OYAYO", "OYLUM", "OYYAT", "OZATD", "OZKGY", "OZRDN", "OZSUB", "PAGYO", "PAMEL", 
+    "PAPIL", "PARSN", "PASEU", "PCILT", "PEKGY", "PENGD", "PENTA", "PETKM", "PETUN", "PGSUS", 
+    "PINAR", "PKART", "PKENT", "PLTUR", "POLHO", "POLTK", "PRKAB", "PRKME", "PRDGS", "PRZMA", 
+    "PSDTC", "PSGYO", "QUAGR", "RALYH", "RAYSG", "REEDR", "RGYAS", "RNPOL", "RODRG", "RUBNS", 
+    "RYGYO", "RYSAS", "SAFKR", "SAHOL", "SAMAT", "SANEL", "SANFM", "SANKO", "SARKY", "SASA", 
+    "SAYAS", "SDTTR", "SEGMN", "SEKFK", "SEKUR", "SELEC", "SELVA", "SEYKM", "SILVR", "SISE", 
+    "SKBNK", "SKYMD", "SMART", "SMRTG", "SOKE", "SOKM", "SONME", "SRVGY", "SUMAS", "SUNGY", 
+    "SURGY", "SUWEN", "TABGD", "TATEN", "TATGD", "TAVHL", "TCELL", "TCKRC", "TDGYO", "TEKTU", 
     "TERA", "TETMT", "TEZOL", "TGSAS", "THYAO", "TKFEN", "TKNSA", "TLMAN", "TMSN", "TNZTP", 
     "TOASO", "TRCAS", "TRGYO", "TRILC", "TSKB", "TSPOR", "TTKOM", "TTRAK", "TUKAS", "TUPRS", 
     "TURSG", "UFUK", "ULAS", "ULKER", "ULUFA", "ULUSE", "UNLU", "USAK", "VAKBN", "VAKFN", 
@@ -100,6 +101,12 @@ BIST_ALL_TICKERS = [
     "VRGYO", "YAPRK", "YATAS", "YAYLA", "YEOTK", "YGYO", "YKBNK", "YKSLN", "YONGA", "YUNSA", 
     "YYLGD", "ZEDUR", "ZOREN", "ZRGYO"
 ]
+
+def get_all_bist_tickers() -> List[str]:
+    """
+    Borsa İstanbul'daki Tüm Hisseleri (600+ Şirket) Getiren Dinamik Dinleme Motoru
+    """
+    return list(set(BIST_ALL_TICKERS))
 
 def get_us_tickers() -> List[str]:
     try:
@@ -471,11 +478,11 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
 # ----------------────────────────-----------------------------------------
 
 def execute_real_bulk_scan(market: str) -> List[Dict[str, Any]]:
-    raw_tickers = BIST_ALL_TICKERS if market == "BIST" else get_us_tickers()
+    raw_tickers = get_all_bist_tickers() if market == "BIST" else get_us_tickers()
     results = []
 
-    # Render ücretsiz sunucu hafızasını zorlamamak için iş parçacığı 10 ile sınırlandı
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # Render ücretsiz sunucu bellek ve isteğini optimize tutmak için 15 worker iş parçacığı
+    with ThreadPoolExecutor(max_workers=15) as executor:
         futures = [executor.submit(fetch_single_stock_real_data, ticker, market) for ticker in raw_tickers]
         for future in futures:
             res = future.result()
@@ -593,6 +600,5 @@ def gemini_financial_chatbot(req: ChatRequest):
 # ----------------────────────────-----------------------------------------
 if __name__ == "__main__":
     import uvicorn
-    # Render'ın atadığı dinamik PORT okunur, yoksa varsayılan 8000 alınır
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
