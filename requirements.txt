@@ -11,3 +11,13 @@ yfinance
 requests
 pandas
 lxml
+fastapi
+uvicorn
+pydantic
+requests
+pandas
+numpy
+yfinance
+lxml
+html5lib
+feedparser
