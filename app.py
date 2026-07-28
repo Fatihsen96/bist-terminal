@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 from bist_manager import BISTUniverseManager
+from kap_manager import KAPLiveNewsEngine
 
 # Sayfa Yapılandırması
 st.set_page_config(
@@ -14,7 +15,7 @@ st.title("📈 BIST Market & Sinyal Terminali")
 st.caption("Streamlit tabanlı canlı hisse analiz ve filtreleme platformu")
 
 # ---------------------------------------------------------
-# Dinamik Hisse Evreni Servisi
+# 1. Dinamik Hisse Evreni Servisi
 # ---------------------------------------------------------
 @st.cache_data(ttl=3600)  # Hisse listesini saatte 1 kez günceller
 def get_live_tickers():
@@ -39,7 +40,9 @@ if market_type == "Dinamik BIST Evreni":
 else:
     tickers_to_fetch = ["THYAO.IS", "GARAN.IS", "ASELS.IS", "EREGL.IS", "KCHOL.IS", "BIMAS.IS"]
 
-# Veri Çekme Alanı
+# ---------------------------------------------------------
+# 2. Veri Çekme Alanı
+# ---------------------------------------------------------
 st.subheader("1. Hisse Veri Akışı")
 
 @st.cache_data(ttl=300)
@@ -69,7 +72,9 @@ with st.spinner("BIST verileri güncelleniyor..."):
 
 st.dataframe(df_stocks, use_container_width=True)
 
-# İstatistik Özetleri
+# ---------------------------------------------------------
+# 3. İstatistik Özetleri
+# ---------------------------------------------------------
 st.subheader("2. Pazar Özeti")
 col1, col2, col3 = st.columns(3)
 col1.metric("Listelenen Hisse", len(df_stocks))
@@ -80,3 +85,28 @@ if not df_stocks.empty:
     
     top_loser = df_stocks.sort_values(by="Günlük Değişim (%)", ascending=True).iloc[0]
     col3.metric("En Çok Düşen", top_loser["Hisse"], f"%{top_loser['Günlük Değişim (%)']}")
+
+# ---------------------------------------------------------
+# 4. Canlı KAP Bildirim Akışı Servisi
+# ---------------------------------------------------------
+st.markdown("---")
+st.subheader("3. Canlı KAP Bildirim Akışı")
+
+@st.cache_data(ttl=60)  # KAP haberlerini dakikada 1 kez günceller
+def fetch_kap_news():
+    engine = KAPLiveNewsEngine()
+    return engine.fetch_latest_disclosures()
+
+with st.spinner("KAP bildirimleri kontrol ediliyor..."):
+    kap_news = fetch_kap_news()
+
+if kap_news:
+    for item in kap_news[:10]:  # Ekranı yormamak için son 10 bildirimi gösteriyoruz
+        stock_code = item.get("stockCodes", "GENEL")
+        title = item.get("title", "KAP Bildirimi")
+        summary = item.get("summary", "Özet açıklaması bulunmuyor.")
+        
+        with st.expander(f"📌 [{stock_code}] - {title}"):
+            st.write(summary)
+else:
+    st.info("Şu an için yeni bir KAP bildirimi bulunmuyor veya canlı akış bekleniyor.")
