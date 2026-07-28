@@ -186,3 +186,94 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
     </div>
   );
 };
+import React, { useState } from 'react';
+
+export const AIAgentCard = ({ symbol }: { symbol: string }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [statusText, setStatusText] = useState('');
+  const [result, setResult] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const steps = [
+    "Finansal/bilanço verilerini çek (son dönem, TTM, çarpanlar, marjlar)",
+    "Teknik analiz göstergelerini hesapla (özet skor, RSI, MA, Bollinger vb.)",
+    "Haber/gündem değerlendirmesi (KAP, dokümanlar)",
+    "Üç boyutu birleştirip yatırım değerlendirmesi sun"
+  ];
+
+  const startAnalysis = () => {
+    setLoading(true);
+    setCurrentStep(1);
+
+    const eventSource = new EventSource(`/api/ai/agent-analyze/${symbol}`);
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.step) {
+        setCurrentStep(data.step);
+      }
+
+      if (data.completed) {
+        setResult(data.result);
+        setLoading(false);
+        eventSource.close();
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      setLoading(false);
+    };
+  };
+
+  return (
+    <div className="bg-[#121824] border border-slate-800 rounded-xl p-5 text-slate-200">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold text-lg text-purple-400">
+          🤖 {symbol} Üç Boyutlu Analiz Planı
+        </h3>
+        {!loading && !result && (
+          <button 
+            onClick={startAnalysis}
+            className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition"
+          >
+            Agent Analizini Başlat
+          </button>
+        )}
+      </div>
+
+      {loading && (
+        <div className="bg-[#0b0f17] border border-slate-800/80 rounded-lg p-4 space-y-3">
+          <div className="text-xs font-mono text-purple-400">
+            Plan ({currentStep}/4)
+          </div>
+
+          {steps.map((stepText, idx) => {
+            const stepNum = idx + 1;
+            const isCurrent = currentStep === stepNum;
+            const isDone = currentStep > stepNum;
+
+            return (
+              <div key={idx} className="flex items-center gap-3 text-sm">
+                {isCurrent && <span className="animate-spin text-purple-400">⚙️</span>}
+                {isDone && <span className="text-emerald-400">✓</span>}
+                {!isCurrent && !isDone && <span className="text-slate-600">◯</span>}
+
+                <span className={isCurrent ? "font-bold text-white" : isDone ? "text-slate-400 line-through" : "text-slate-500"}>
+                  {stepText}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-4 p-4 bg-slate-900/60 rounded-lg border border-slate-800 text-sm leading-relaxed text-slate-300">
+          {result}
+        </div>
+      )}
+    </div>
+  );
+};
