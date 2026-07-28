@@ -1,23 +1,19 @@
 import React, { useState } from 'react';
-import { Bot, RefreshCw, CheckCircle2, Circle, Plus, X } from 'lucide-react';
+import { Bot, RefreshCw, Plus, X } from 'lucide-react';
 
 interface FilterSidebarProps {
   valuationRange: [number, number];
   setValuationRange: (val: [number, number]) => void;
-  selectedSignals: string[];
-  toggleSignal: (signal: string) => void;
   selectedSectors: string[];
   toggleSector: (sector: string) => void;
   onRunAiAnalysis: () => void;
   isAnalyzing: boolean;
-  currentLang?: 'en' | 'tr'; // Dil desteği eklendi
+  currentLang?: 'en' | 'tr';
 }
 
 export const FilterSidebar: React.FC<FilterSidebarProps> = ({
   valuationRange,
   setValuationRange,
-  selectedSignals,
-  toggleSignal,
   selectedSectors,
   toggleSector,
   onRunAiAnalysis,
@@ -26,14 +22,6 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
 }) => {
   const [showAddSector, setShowAddSector] = useState(false);
   const [newSectorInput, setNewSectorInput] = useState('');
-
-  const signalOptions = [
-    { id: 'Strong Value', label: 'Strong Value' },
-    { id: 'Dividend King', label: 'Dividend King' },
-    { id: 'Growth Rebound', label: 'Growth Rebound' },
-    { id: 'High Momentum', label: 'High Momentum' },
-    { id: 'AI Outlier', label: 'AI Outlier' },
-  ];
 
   const availableSectors = ['Tech', 'Energy', 'Healthcare', 'Finance', 'Industrials', 'Crypto', 'Commodity'];
 
@@ -79,36 +67,6 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
               <span>{currentLang === 'tr' ? '0 (Düşük Değer)' : '0 (Deep Value)'}</span>
               <span>{currentLang === 'tr' ? '100 (Tepe Çarpanlar)' : '100 (Peak Multiples)'}</span>
             </div>
-          </div>
-        </div>
-
-        {/* Primary Signals */}
-        <div>
-          <label className="text-[10px] font-bold font-sans text-[#94a3b8] uppercase tracking-wider mb-2.5 block">
-            {currentLang === 'tr' ? 'Birincil Sinyaller' : 'Primary Signals'}
-          </label>
-          <div className="grid grid-cols-1 gap-2">
-            {signalOptions.map((opt) => {
-              const isSelected = selectedSignals.includes(opt.id);
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => toggleSignal(opt.id)}
-                  className={`flex items-center justify-between p-2.5 rounded-md border text-xs font-medium transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#38bdf8]/10 border-[#38bdf8]/40 text-[#38bdf8]'
-                      : 'bg-[#101017] border-[#1f1f2e] text-[#bdc8d1] hover:border-[#38bdf8]/30'
-                  }`}
-                >
-                  <span>{opt.label}</span>
-                  {isSelected ? (
-                    <CheckCircle2 className="w-4 h-4 text-[#38bdf8]" />
-                  ) : (
-                    <Circle className="w-4 h-4 text-[#87929a]" />
-                  )}
-                </button>
-              );
-            })}
           </div>
         </div>
 
