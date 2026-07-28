@@ -8,3 +8,6 @@ lxml>=4.9.0
 requests>=2.31.0
 streamlit
 yfinance
+requests
+pandas
+lxml
