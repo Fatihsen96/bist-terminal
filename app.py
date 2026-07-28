@@ -3,6 +3,7 @@ import pandas as pd
 import yfinance as yf
 from bist_manager import BISTUniverseManager
 from kap_manager import KAPLiveNewsEngine
+from nlp_analyzer import FinancialTextNLPAnalyzer
 
 # Sayfa Yapılandırması
 st.set_page_config(
@@ -13,6 +14,9 @@ st.set_page_config(
 
 st.title("📈 BIST Market & Sinyal Terminali")
 st.caption("Streamlit tabanlı canlı hisse analiz ve filtreleme platformu")
+
+# NLP Analiz Motorunu Başlatıyoruz
+nlp = FinancialTextNLPAnalyzer()
 
 # ---------------------------------------------------------
 # 1. Dinamik Hisse Evreni Servisi
@@ -87,17 +91,17 @@ if not df_stocks.empty:
     col3.metric("En Çok Düşen", top_loser["Hisse"], f"%{top_loser['Günlük Değişim (%)']}")
 
 # ---------------------------------------------------------
-# 4. Canlı KAP Bildirim Akışı Servisi
+# 4. Canlı KAP Bildirim Akışı ve NLP Duygu Analizi
 # ---------------------------------------------------------
 st.markdown("---")
-st.subheader("3. Canlı KAP Bildirim Akışı")
+st.subheader("3. Canlı KAP Bildirim Akışı ve Duygu Analizi")
 
 @st.cache_data(ttl=60)  # KAP haberlerini dakikada 1 kez günceller
 def fetch_kap_news():
     engine = KAPLiveNewsEngine()
     return engine.fetch_latest_disclosures()
 
-with st.spinner("KAP bildirimleri kontrol ediliyor..."):
+with st.spinner("KAP bildirimleri ve NLP analizi yükleniyor..."):
     kap_news = fetch_kap_news()
 
 if kap_news:
@@ -106,7 +110,12 @@ if kap_news:
         title = item.get("title", "KAP Bildirimi")
         summary = item.get("summary", "Özet açıklaması bulunmuyor.")
         
-        with st.expander(f"📌 [{stock_code}] - {title}"):
-            st.write(summary)
+        # NLP Duygu Analizi Skorlama
+        score = nlp.analyze_sentiment(title, summary)
+        sentiment_label = nlp.get_sentiment_label(score)
+        
+        with st.expander(f"📌 [{stock_code}] {title} | {sentiment_label}"):
+            st.write(f"**Duygu / Etki Skoru:** `{score}`")
+            st.write(f"**Açıklama Özeti:** {summary}")
 else:
     st.info("Şu an için yeni bir KAP bildirimi bulunmuyor veya canlı akış bekleniyor.")
