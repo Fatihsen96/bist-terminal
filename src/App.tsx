@@ -46,7 +46,6 @@ export default function App() {
   
   // AI Filter States
   const [valuationRange, setValuationRange] = useState<[number, number]>([0, 100]);
-  const [selectedSignals, setSelectedSignals] = useState<string[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
@@ -56,7 +55,7 @@ export default function App() {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
-  // Live FastAPI & Express API Data Fetching Bridge
+  // Live FastAPI & Express API Data Fetching Bridge - Otomatik Tüm Veriyi Çeker
   useEffect(() => {
     if (selectedMarket === 'BIST' || selectedMarket === 'US Markets') {
       const fetchUrl = `/api/tara?piyasa=${selectedMarket}`;
@@ -72,7 +71,8 @@ export default function App() {
           if (data && data.veriler && data.veriler.length > 0) {
             setStocks((prev) => {
               const otherStocks = prev.filter((s) => s.market !== selectedMarket);
-              return [...otherStocks, ...data.veriler];
+              const sortedLive = [...data.veriler].sort((a, b) => b.valueScore - a.valueScore);
+              return [...otherStocks, ...sortedLive];
             });
           }
         })
@@ -86,13 +86,6 @@ export default function App() {
   const fourOfFourStocks = useMemo(() => {
     return stocks.filter((s) => s.isFourOfFour);
   }, [stocks]);
-
-  // Toggle Signals in Filter Sidebar
-  const toggleSignalFilter = (sig: string) => {
-    setSelectedSignals((prev) =>
-      prev.includes(sig) ? prev.filter((s) => s !== sig) : [...prev, sig]
-    );
-  };
 
   // Toggle Sector in Filter Sidebar
   const toggleSectorFilter = (sec: string) => {
@@ -115,24 +108,28 @@ export default function App() {
     }, 900);
   };
 
-  // Filtered stocks computation
+  // Filtered & Auto-Sorted Stocks Computation (En Yüksek AI Skordan Otomatik Sıralı)
   const filteredStocks = useMemo(() => {
-    return stocks.filter((s) => {
-      if (s.market !== selectedMarket) return false;
-      if (s.valueScore < valuationRange[0] || s.valueScore > valuationRange[1]) return false;
-      if (selectedSignals.length > 0) {
-        if (!s.primaryTag || !selectedSignals.includes(s.primaryTag)) {
-          if (!selectedSignals.includes(s.signal)) return false;
+    return stocks
+      .filter((s) => {
+        if (s.market !== selectedMarket) return false;
+        if (s.valueScore < valuationRange[0] || s.valueScore > valuationRange[1]) return false;
+        if (selectedSectors.length > 0 && !selectedSectors.includes(s.sector)) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          return s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q);
         }
-      }
-      if (selectedSectors.length > 0 && !selectedSectors.includes(s.sector)) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [stocks, selectedMarket, valuationRange, selectedSignals, selectedSectors, searchQuery]);
+        return true;
+      })
+      .sort((a, b) => b.valueScore - a.valueScore);
+  }, [stocks, selectedMarket, valuationRange, selectedSectors, searchQuery]);
+
+  // Sayfa ilk yüklendiğinde seçili hisseyi listenin en üstündekine ayarla
+  useEffect(() => {
+    if (filteredStocks.length > 0 && (!selectedStock || selectedStock.market !== selectedMarket)) {
+      setSelectedStock(filteredStocks[0]);
+    }
+  }, [filteredStocks, selectedMarket]);
 
   // Handle Trade Execution
   const handleExecuteTrade = (trade: {
@@ -237,12 +234,10 @@ export default function App() {
         <div className="flex-1 flex overflow-hidden">
           {activeTab === 'screener' || activeTab === 'markets' ? (
             <>
-              {/* Filter Sidebar */}
+              {/* Filter Sidebar - Birincil Sinyaller Kaldırılmış Temiz Sürüm */}
               <FilterSidebar
                 valuationRange={valuationRange}
                 setValuationRange={setValuationRange}
-                selectedSignals={selectedSignals}
-                toggleSignal={toggleSignalFilter}
                 selectedSectors={selectedSectors}
                 toggleSector={toggleSectorFilter}
                 onRunAiAnalysis={handleRunAiAnalysis}
