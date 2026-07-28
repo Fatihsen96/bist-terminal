@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StockItem } from '../types';
 import { ArrowUpDown, Sparkles, Award, Zap } from 'lucide-react';
 
@@ -17,6 +17,7 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
   onOpenDetailModal,
   currentLang = 'tr',
 }) => {
+  const [liveStocks, setLiveStocks] = useState<StockItem[]>(stocks);
   const [sortField, setSortField] = useState<'valueScore' | 'upside' | 'symbol' | 'fairPrice'>('valueScore');
   const [sortAsc, setSortAsc] = useState(false);
   const [filterTab, setFilterTab] = useState<'all' | 'fourOfFour' | 'trend' | 'undervalued' | 'overvalued'>('all');
@@ -24,8 +25,37 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
   const [hoveredStockId, setHoveredStockId] = useState<string | null>(null);
   const [tooltipOpenUp, setTooltipOpenUp] = useState<boolean>(false);
 
-  // Quick Filter Tab logic
-  const filteredStocks = stocks.filter((stock) => {
+  // Üst bileşenden gelen veri değişirse yerel durumu güncelle
+  useEffect(() => {
+    if (stocks && stocks.length > 0) {
+      setLiveStocks(stocks);
+    }
+  }, [stocks]);
+
+  // --- 15 SANİYEDE BİR SESSİZ CANLI VERİ POLLING DÖNGÜSÜ ---
+  useEffect(() => {
+    const fetchLiveUpdates = async () => {
+      try {
+        const response = await fetch('/api/tara?piyasa=BIST');
+        if (response.ok) {
+          const result = await response.json();
+          if (result && result.veriler && Array.isArray(result.veriler) && result.veriler.length > 0) {
+            setLiveStocks(result.veriler);
+          }
+        }
+      } catch (error) {
+        console.error('Canlı BIST verisi güncellenirken hata oluştu:', error);
+      }
+    };
+
+    // Her 15 saniyede bir arka planda canlı verileri çeker
+    const intervalId = setInterval(fetchLiveUpdates, 15000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Quick Filter Tab logic (Canlı liveStocks üzerinden çalışır)
+  const filteredStocks = liveStocks.filter((stock) => {
     if (filterTab === 'fourOfFour') return stock.isFourOfFour;
     if (filterTab === 'trend') return stock.indicatorValues?.most?.is_bullish || stock.indicatorValues?.goldenCross || (stock.technicalScore && stock.technicalScore >= 70);
     if (filterTab === 'undervalued') return stock.signal === 'STRONG BUY' || stock.upside >= 20;
@@ -138,7 +168,7 @@ export const SignalsTable: React.FC<SignalsTableProps> = ({
         </div>
       </div>
 
-      {/* Table Body Container - Tabloyu Sığdıran ve Taşmayı Engelleyen Alan */}
+      {/* Table Body Container */}
       <div className="w-full overflow-y-auto overflow-x-auto flex-1 min-h-0 scrollbar-thin">
         <table className="w-full text-left text-[11px] border-collapse table-auto">
           <thead className="bg-[#070709] text-[#87929a] font-mono text-[9px] uppercase border-b border-[#1f1f2e] sticky top-0 z-20 backdrop-blur">
