@@ -131,7 +131,7 @@ CACHE: Dict[str, Any] = {
     'BIST': {'timestamp': 0, 'data': []},
     'US Markets': {'timestamp': 0, 'data': []}
 }
-CACHE_TTL = 300
+CACHE_TTL = 15
 
 # -------------------------------------------------------------------------
 # TEKNİK İNDİKATÖR HESAPLAMA MOTORU
