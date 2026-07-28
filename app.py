@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-
+from bist_manager import BISTUniverseManager
 # Sayfa Yapılandırması
 st.set_page_config(
     page_title="BIST Market Terminal",
