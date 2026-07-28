@@ -11,7 +11,7 @@ interface RadarChartProps {
 export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal, currentLang = 'tr' }) => {
   if (!stock) {
     return (
-      <div className="glass-panel rounded-xl p-5 flex flex-col h-full items-center justify-center text-center border border-[#1f1f2e]">
+      <div className="glass-panel rounded-xl p-5 flex flex-col h-full items-center justify-center text-center border border-[#1f1f2e] bg-[#121316]">
         <Info className="w-8 h-8 text-[#87929a] mb-2" />
         <p className="text-xs text-[#94a3b8]">
           {currentLang === 'tr' 
@@ -26,25 +26,25 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
 
   // Varsayılan finansal rasyo değerleri
   const hb = healthBreakdown || {
-    profit: 85,
-    fk: 75,
-    pddd: 80,
-    favok: 90,
-    netVarlik: 70,
-    borc: 80
+    profit: 75,
+    fk: 70,
+    pddd: 65,
+    favok: 80,
+    netVarlik: 75,
+    borc: 85
   };
 
   const center = 50;
-  const maxRadius = 38;
+  const maxRadius = 35;
 
   // 6 Gerçek Finansal Eksen
   const metrics = [
-    { label: currentLang === 'tr' ? 'KARLILIK' : 'PROFIT', score: hb.profit ?? (hb as any).profitability ?? 75, xLabel: 50, yLabel: 5, textAnchor: 'middle' },
-    { label: 'F/K', score: hb.fk ?? 70, xLabel: 95, yLabel: 28, textAnchor: 'start' },
-    { label: 'PD/DD', score: hb.pddd ?? 65, xLabel: 88, yLabel: 85, textAnchor: 'start' },
-    { label: 'FAVÖK', score: hb.favok ?? 80, xLabel: 50, yLabel: 98, textAnchor: 'middle' },
-    { label: currentLang === 'tr' ? 'NET VARLIK' : 'ASSETS', score: hb.netVarlik ?? 75, xLabel: 5, yLabel: 85, textAnchor: 'end' },
-    { label: currentLang === 'tr' ? 'BORÇ SĞL.' : 'DEBT', score: hb.borc ?? 85, xLabel: 5, yLabel: 28, textAnchor: 'end' },
+    { label: currentLang === 'tr' ? 'KARLILIK' : 'PROFIT', score: hb.profit ?? 75, xLabel: 50, yLabel: 7, textAnchor: 'middle' },
+    { label: 'F/K', score: hb.fk ?? 70, xLabel: 92, yLabel: 28, textAnchor: 'start' },
+    { label: 'PD/DD', score: hb.pddd ?? 65, xLabel: 88, yLabel: 82, textAnchor: 'start' },
+    { label: 'FAVÖK', score: hb.favok ?? 80, xLabel: 50, yLabel: 96, textAnchor: 'middle' },
+    { label: currentLang === 'tr' ? 'NET VARLIK' : 'ASSETS', score: hb.netVarlik ?? 75, xLabel: 8, yLabel: 82, textAnchor: 'end' },
+    { label: currentLang === 'tr' ? 'BORÇ SĞL.' : 'DEBT', score: hb.borc ?? 85, xLabel: 8, yLabel: 28, textAnchor: 'end' },
   ];
 
   const points = metrics.map((m, idx) => {
@@ -55,7 +55,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
 
-  // Dinamik Skor Renklendirme Yardımcısı (0-25 Kırmızı, 25-50 Turuncu, 50-75 Sarı, 75-100 Yeşil)
+  // Dinamik Skor Renklendirme Yardımcısı
   const getScoreColorClass = (score: number) => {
     if (score < 25) return 'text-[#fb7185]';
     if (score < 50) return 'text-[#fb923c]';
@@ -66,7 +66,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
   return (
     <div className="glass-panel rounded-xl p-4 flex flex-col h-full border border-[#1f1f2e] select-none bg-[#121316]">
       {/* Header */}
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-2">
         <div>
           <h3 className="font-headline font-bold text-xs uppercase tracking-wider text-[#dee3e8] flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-[#38bdf8]" />
@@ -83,14 +83,15 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
       </div>
 
       {/* SVG Radar Polygon */}
-      <div className="flex-1 flex items-center justify-center relative radar-grid rounded-lg border border-[#1f1f2e]/60 overflow-hidden py-2">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-48 h-48 rounded-full border border-[#1f1f2e]/60" />
-          <div className="w-32 h-32 rounded-full border border-[#1f1f2e]/50" />
-          <div className="w-16 h-16 rounded-full border border-[#1f1f2e]/40" />
+      <div className="flex-1 flex items-center justify-center relative rounded-lg border border-[#1f1f2e]/60 overflow-hidden py-2 min-h-[190px]">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
+          <div className="w-40 h-40 rounded-full border border-[#38bdf8]/30" />
+          <div className="w-28 h-28 rounded-full border border-[#38bdf8]/20" />
+          <div className="w-14 h-14 rounded-full border border-[#38bdf8]/10" />
         </div>
 
-        <svg viewBox="0 0 100 100" className="w-52 h-52 drop-shadow-lg overflow-visible z-10">
+        <svg viewBox="0 0 100 100" className="w-full h-48 drop-shadow-lg overflow-visible z-10">
+          {/* Eksen Çizgileri */}
           {[0, 60, 120, 180, 240, 300].map((deg) => {
             const angleRad = (Math.PI / 180) * (deg - 90);
             const x2 = center + maxRadius * Math.cos(angleRad);
@@ -102,21 +103,23 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
                 y1={center}
                 x2={x2}
                 y2={y2}
-                stroke="#1f1f2e"
-                strokeWidth="0.8"
-                strokeDasharray="1 1"
+                stroke="#334155"
+                strokeWidth="0.6"
+                strokeDasharray="1.5 1.5"
               />
             );
           })}
 
+          {/* Doldurulmuş Radar Poligonu */}
           <polygon
             points={points}
-            fill="rgba(56, 189, 248, 0.22)"
+            fill="rgba(56, 189, 248, 0.28)"
             stroke="#38bdf8"
-            strokeWidth="1.8"
+            strokeWidth="1.5"
             className="transition-all duration-500 ease-out"
           />
 
+          {/* Noktalar */}
           {metrics.map((m, idx) => {
             const angleRad = (Math.PI / 180) * (idx * 60 - 90);
             const radius = (m.score / 100) * maxRadius;
@@ -135,13 +138,14 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
             );
           })}
 
+          {/* Etiketler */}
           {metrics.map((m, idx) => (
             <text
               key={idx}
               x={m.xLabel}
               y={m.yLabel}
               fill="#94a3b8"
-              fontSize="4.5"
+              fontSize="4.2"
               fontWeight="bold"
               textAnchor={m.textAnchor as any}
               className="font-mono uppercase tracking-wider"
@@ -151,19 +155,10 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
           ))}
         </svg>
       </div>
-<div className="w-full h-[220px] flex items-center justify-center">
-  <ResponsiveContainer width="100%" height="100%">
-    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
-      <PolarGrid stroke="#334155" />
-      <PolarAngleAxis dataKey="subject" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-      <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#334155" />
-      <Radar name="Skor" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} />
-    </RadarChart>
-  </ResponsiveContainer>
-</div>
-      {/* Rasyo Özet Kutuları (Dinamik Renkli) */}
-      <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-[#1f1f2e]">
-        <div className="bg-[#101017] p-2 rounded border border-[#1f1f2e] text-center">
+
+      {/* Rasyo Özet Kutuları */}
+      <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-[#1f1f2e]">
+        <div className="bg-[#101017] p-1.5 rounded border border-[#1f1f2e] text-center">
           <span className="text-[9px] text-[#87929a] font-mono block">
             {currentLang === 'tr' ? 'Karlılık (ROE)' : 'Profitability'}
           </span>
@@ -171,7 +166,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
             {metrics[0].score}/100
           </span>
         </div>
-        <div className="bg-[#101017] p-2 rounded border border-[#1f1f2e] text-center">
+        <div className="bg-[#101017] p-1.5 rounded border border-[#1f1f2e] text-center">
           <span className="text-[9px] text-[#87929a] font-mono block">
             {currentLang === 'tr' ? 'F/K İskontosu' : 'P/E Score'}
           </span>
@@ -179,7 +174,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
             {metrics[1].score}/100
           </span>
         </div>
-        <div className="bg-[#101017] p-2 rounded border border-[#1f1f2e] text-center">
+        <div className="bg-[#101017] p-1.5 rounded border border-[#1f1f2e] text-center">
           <span className="text-[9px] text-[#87929a] font-mono block">
             {currentLang === 'tr' ? 'FAVÖK Gücü' : 'EBITDA Score'}
           </span>
