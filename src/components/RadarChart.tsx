@@ -151,7 +151,16 @@ export const RadarChart: React.FC<RadarChartProps> = ({ stock, onOpenDetailModal
           ))}
         </svg>
       </div>
-
+<div className="w-full h-[220px] flex items-center justify-center">
+  <ResponsiveContainer width="100%" height="100%">
+    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
+      <PolarGrid stroke="#334155" />
+      <PolarAngleAxis dataKey="subject" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+      <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#334155" />
+      <Radar name="Skor" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} />
+    </RadarChart>
+  </ResponsiveContainer>
+</div>
       {/* Rasyo Özet Kutuları (Dinamik Renkli) */}
       <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-[#1f1f2e]">
         <div className="bg-[#101017] p-2 rounded border border-[#1f1f2e] text-center">
