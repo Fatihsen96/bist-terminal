@@ -5,9 +5,18 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import time
+import os
 import warnings
+import requests
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any, List, Optional
+
+# Opsiyonel feedparser kontrolü (yüklü değilse çökmez)
+try:
+    import feedparser
+except ImportError:
+    feedparser = None
 
 warnings.filterwarnings('ignore')
 
@@ -24,7 +33,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. BİST TÜM HİSSELER LİSTESİ (Kapsamlı Liste)
+# ----------------────────────────-----------------------------------------
+# KÖK VE SAĞLIK KONTROLÜ ENDPOINTLERİ (Render Deploy'u İçin Şart)
+# ----------------────────────────-----------------------------------------
+@app.get("/")
+def root_check():
+    return {
+        "status": "online",
+        "service": "FinOS BIST Backend Engine",
+        "version": "2.0",
+        "timestamp": time.time()
+    }
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+# ----------------────────────────-----------------------------------------
+# 1. BİST TÜM HİSSELER LİSTESİ
+# ----------------────────────────-----------------------------------------
 BIST_ALL_TICKERS = [
     "AAVEST", "A1CAP", "AAVST", "ABS30", "ACSEL", "ADEL", "ADESE", "ADGYO", "AEFES", "AFYON", 
     "AGESA", "AGHOL", "AGROT", "AHGAZ", "AKBNK", "AKCNS", "AKFGY", "AKFYE", "AKMGY", "AKSA", 
@@ -91,25 +118,8 @@ CACHE_TTL = 300  # 5 dakika saklanır
 # ----------------────────────────-----------------------------------------
 # TEKNİK İNDİKATÖR HESAPLAMA MOTORU
 # ----------------────────────────-----------------------------------------
-import feedparser # requirements.txt'e feedparser ekleyin
 
-@app.get("/api/news/{symbol}")
-def get_live_news(symbol: str):
-    # Google News BIST RSS Akışı
-    rss_url = f"https://news.google.com/rss/search?q={symbol}+borsa+istanbul&hl=tr&gl=TR&ceid=TR:tr"
-    feed = feedparser.parse(rss_url)
-    news_items = []
-    
-    for entry in feed.entries[:5]:
-        news_items.append({
-            "title": entry.title,
-            "link": entry.link,
-            "pubDate": entry.published,
-            "source": entry.source.title if hasattr(entry, 'source') else "BIST Haber"
-        })
-    return {"symbol": symbol, "news": news_items}
 def calculate_rsi(series: pd.Series, period: int = 14) -> float:
-    """RSI (Relative Strength Index - Göreceli Güç Endeksi) Hesabı"""
     try:
         delta = series.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -122,7 +132,6 @@ def calculate_rsi(series: pd.Series, period: int = 14) -> float:
         return 50.0
 
 def calculate_macd(series: pd.Series) -> Dict[str, float]:
-    """MACD (12, 26, 9) Hesabı"""
     try:
         ema12 = series.ewm(span=12, adjust=False).mean()
         ema26 = series.ewm(span=26, adjust=False).mean()
@@ -138,7 +147,6 @@ def calculate_macd(series: pd.Series) -> Dict[str, float]:
         return {"macd": 0.0, "signal": 0.0, "histogram": 0.0}
 
 def calculate_bollinger_bands(series: pd.Series, period: int = 20, num_std: float = 2.0) -> Dict[str, float]:
-    """Bollinger Bantları (20, 2) Hesabı"""
     try:
         sma = series.rolling(window=period).mean()
         std = series.rolling(window=period).std()
@@ -154,10 +162,6 @@ def calculate_bollinger_bands(series: pd.Series, period: int = 20, num_std: floa
         return {"upper": round(cp * 1.05, 2), "middle": round(cp, 2), "lower": round(cp * 0.95, 2)}
 
 def calculate_most_indicator(series: pd.Series, period: int = 9, percent: float = 2.0) -> Dict[str, Any]:
-    """
-    MOST (Moving Average Oscillator Trend - Anıl Özekşi BİST İndikatörü)
-    EMA 9 üzerine %2 izleyen stop (trailing stop) hesaplar.
-    """
     try:
         ex_ema = series.ewm(span=period, adjust=False).mean()
         most = []
@@ -198,7 +202,6 @@ def calculate_most_indicator(series: pd.Series, period: int = 9, percent: float 
         return {"most_value": round(cp * 0.98, 2), "ema_value": round(cp, 2), "trend": "BULLISH", "is_bullish": True}
 
 def calculate_support_resistance(hist: pd.DataFrame, current_price: float) -> Dict[str, List[float]]:
-    """Price Clustering yöntemiyle dinamik Destek & Direnç seviyeleri"""
     try:
         highs = hist['High'].values
         lows = hist['Low'].values
@@ -284,74 +287,52 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
         change_pct = float(((current_price - prev_close) / prev_close) * 100)
         info = t.info or {}
 
-        # --- 1. TEKNİK ANALİZ MOTORU HESAPLAMALARI ---
+        # --- 1. TEKNİK ANALİZ MOTORU ---
         rsi_14 = calculate_rsi(closes, 14)
         macd_info = calculate_macd(closes)
         bb_info = calculate_bollinger_bands(closes)
         most_info = calculate_most_indicator(closes)
         
-        # EMA Hesapları
         ema20 = float(closes.ewm(span=20, adjust=False).mean().iloc[-1])
         ema50 = float(closes.ewm(span=50, adjust=False).mean().iloc[-1])
         ema200 = float(closes.ewm(span=200, adjust=False).mean().iloc[-1]) if len(closes) >= 100 else ema50
 
         golden_cross = ema50 > ema200
-        death_cross = ema50 < ema200 and not golden_cross
         above_ema200 = current_price > ema200
 
-        # Hacim Analizi
         vol_series = hist["Volume"]
         current_vol = float(vol_series.iloc[-1])
         avg_vol_20 = float(vol_series.rolling(20).mean().iloc[-1]) if len(vol_series) >= 20 else current_vol
         vol_multiplier = round(current_vol / avg_vol_20, 2) if avg_vol_20 > 0 else 1.0
         volume_breakout = vol_multiplier >= 1.5
 
-        # Teknik Skor Hesaplama (0-100)
         tech_score_points = 50.0
-
-        # RSI Puanı
         if 40 <= rsi_14 <= 65: tech_score_points += 15
-        elif rsi_14 < 35: tech_score_points += 10 # Aşırı satım tepki potansiyeli
-        elif rsi_14 > 75: tech_score_points -= 15 # Aşırı alım riski
+        elif rsi_14 < 35: tech_score_points += 10
+        elif rsi_14 > 75: tech_score_points -= 15
 
-        # MACD Puanı
         if macd_info["histogram"] > 0: tech_score_points += 15
         else: tech_score_points -= 10
 
-        # EMA & Golden Cross Puanı
         if above_ema200: tech_score_points += 10
         if golden_cross: tech_score_points += 10
-
-        # MOST Trend Puanı
         if most_info["is_bullish"]: tech_score_points += 10
-
-        # Hacim Puanı
         if volume_breakout: tech_score_points += 5
 
         technical_score = int(min(98, max(15, tech_score_points)))
 
-        # Teknik Özet Maddeleri
-        tech_highlights = []
-        tech_highlights.append(f"RSI 14 = {rsi_14:.1f} ({'Yükseliş Trendi' if rsi_14 > 50 else 'Zayıf Seyir'})")
-        if macd_info["histogram"] > 0:
-            tech_highlights.append("MACD Al Veriyor (Pozitif Momentum)")
-        else:
-            tech_highlights.append("MACD Sat Bölgesinde")
-
-        if golden_cross:
-            tech_highlights.append("Golden Cross (50 EMA > 200 EMA Yükseliş Formasyonu)")
-        elif above_ema200:
-            tech_highlights.append("200 Günlük EMA Üzerinde Güçlü Trend")
-
-        if most_info["is_bullish"]:
-            tech_highlights.append(f"MOST Trend İndikatörü AL Pozisyonunda (Stop: {currency}{most_info['most_value']})")
-
-        if volume_breakout:
-            tech_highlights.append(f"Ortalamanın {vol_multiplier}x Katı Hacim Patlaması")
+        tech_highlights = [
+            f"RSI 14 = {rsi_14:.1f} ({'Yükseliş Trendi' if rsi_14 > 50 else 'Zayıf Seyir'})",
+            "MACD Al Veriyor (Pozitif Momentum)" if macd_info["histogram"] > 0 else "MACD Sat Bölgesinde"
+        ]
+        if golden_cross: tech_highlights.append("Golden Cross Yükseliş Formasyonu")
+        elif above_ema200: tech_highlights.append("200 Günlük EMA Üzerinde")
+        if most_info["is_bullish"]: tech_highlights.append(f"MOST Trend AL (Stop: {currency}{most_info['most_value']})")
+        if volume_breakout: tech_highlights.append(f"{vol_multiplier}x Hacim Patlaması")
 
         tech_levels = calculate_support_resistance(hist, current_price)
 
-        # --- 2. TEMEL ANALİZ MOTORU HESAPLAMALARI ---
+        # --- 2. TEMEL ANALİZ MOTORU ---
         pe_ratio = info.get('trailingPE') or info.get('forwardPE')
         pb_ratio = info.get('priceToBook')
         ev_ebitda = info.get('enterpriseToEbitda')
@@ -359,17 +340,13 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
         dte = info.get('totalDebtToEquity')
         current_ratio = info.get('currentRatio') or 1.0
 
-        # Skorlamalar
         if pe_ratio is None or pe_ratio <= 0: score_fk = 20; pe_str = "N/A"
         else:
             pe_str = f"{pe_ratio:.2f}x"
             score_fk = 95 if pe_ratio <= 10 else (80 if pe_ratio <= 18 else (50 if pe_ratio <= 30 else 20))
 
-        if pb_ratio is None or pb_ratio <= 0: score_pddd = 35
-        else: score_pddd = 95 if pb_ratio <= 1.5 else (75 if pb_ratio <= 3.5 else 25)
-
-        if ev_ebitda is None or ev_ebitda <= 0: score_favok = 30
-        else: score_favok = 95 if ev_ebitda <= 8 else (70 if ev_ebitda <= 18 else 20)
+        score_pddd = 95 if (pb_ratio and pb_ratio <= 1.5) else (75 if (pb_ratio and pb_ratio <= 3.5) else 35)
+        score_favok = 95 if (ev_ebitda and ev_ebitda <= 8) else (70 if (ev_ebitda and ev_ebitda <= 18) else 30)
 
         roe_pct = (roe * 100) if roe else 15.0
         score_karlilik = 92 if roe_pct >= 25 else (65 if roe_pct >= 12 else 30)
@@ -381,75 +358,45 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
             score_favok * 0.15 + score_net_varlik * 0.10 + score_borc * 0.10
         ))))
 
-        fund_highlights = []
-        fund_highlights.append(f"F/K Oranı: {pe_str} (Sektör Ortalamasının Altında)" if score_fk >= 60 else f"F/K Oranı: {pe_str}")
-        fund_highlights.append(f"Özkaynak Kârlılığı (ROE): %{roe_pct:.1f}")
+        fund_highlights = [
+            f"F/K Oranı: {pe_str}",
+            f"Özkaynak Kârlılığı (ROE): %{roe_pct:.1f}"
+        ]
         if pb_ratio: fund_highlights.append(f"PD/DD Çarpanı: {pb_ratio:.2f}x")
-        fund_highlights.append("Borçluluk Oranı Sağlıklı" if score_borc >= 60 else "Borç Yükü Yüksek")
 
-        # Adil Değer Hesabı
         valuation_ratio = 1.0 + ((fundamental_score - 50) / 100.0)
         fair_price = round(current_price * valuation_ratio, 2)
         upside = round(((fair_price - current_price) / current_price) * 100, 1)
 
-        # --- 3. HABER & KAP SENTIMENT MOTORU ---
+        # --- 3. SENTIMENT VE ANALİST MOTORU ---
         sentiment_score = int(min(95, max(40, 50 + int(change_pct * 3) + (10 if volume_breakout else 0))))
-        news_highlights = [
-            f"{ticker_raw} Son KAP Bildirimi: 'Yeni Yatırım ve Büyüme Kararı' (Pozitif)",
-            f"Sektörel Haberler: Talep Artışı Bekleniyor (Duygu Skoru: %{sentiment_score})"
-        ]
+        news_highlights = [f"{ticker_raw} Son KAP Bildirimi: 'Yeni Yatırım Kararı' (Pozitif)"]
 
-        # --- 4. ANALİST KONSENSÜS VE HEDEF FİYAT MOTORU ---
         raw_analyst_target = info.get('targetMeanPrice')
-        if raw_analyst_target and raw_analyst_target > 0:
-            analyst_target = round(float(raw_analyst_target), 2)
-        else:
-            analyst_target = round(fair_price * 1.06, 2)
-
+        analyst_target = round(float(raw_analyst_target), 2) if (raw_analyst_target and raw_analyst_target > 0) else round(fair_price * 1.06, 2)
         analyst_upside = round(((analyst_target - current_price) / current_price) * 100, 1)
         analyst_score = int(min(98, max(20, 50 + int(analyst_upside * 1.2))))
 
-        # --- 5. DETERMINISTIK HİBRİT KARAR MOTORU (PRD v2.0 Formülü) ---
-        # Formül: AI Skoru = (0.35 * Teknik) + (0.30 * Temel) + (0.15 * Haber) + (0.20 * Analist)
+        # --- NİHAİ SKOR ---
         ai_score = int(round(
-            (0.35 * technical_score) +
-            (0.30 * fundamental_score) +
-            (0.15 * sentiment_score) +
-            (0.20 * analyst_score)
+            (0.35 * technical_score) + (0.30 * fundamental_score) + 
+            (0.15 * sentiment_score) + (0.20 * analyst_score)
         ))
         ai_score = max(10, min(99, ai_score))
 
-        # Sinyal Sınıflandırması
-        if ai_score >= 84:
-            signal = "STRONG BUY"
-            primary_tag = "Strong Value"
-        elif ai_score >= 68:
-            signal = "BUY"
-            primary_tag = "Growth Rebound"
-        elif ai_score <= 45:
-            signal = "OVERVALUED"
-            primary_tag = "AI Outlier"
-        else:
-            signal = "WAIT"
-            primary_tag = "Dividend King"
+        if ai_score >= 84: signal = "STRONG BUY"; primary_tag = "Strong Value"
+        elif ai_score >= 68: signal = "BUY"; primary_tag = "Growth Rebound"
+        elif ai_score <= 45: signal = "OVERVALUED"; primary_tag = "AI Outlier"
+        else: signal = "WAIT"; primary_tag = "Dividend King"
 
-        # 4/4 Sinyal Uyum Kontrolü (Tüm 4 disiplin de Güçlü / Al veriyorsa)
-        is_four_of_four = (
-            technical_score >= 65 and 
-            fundamental_score >= 60 and 
-            sentiment_score >= 55 and 
-            analyst_score >= 60
-        )
+        is_four_of_four = (technical_score >= 65 and fundamental_score >= 60 and sentiment_score >= 55 and analyst_score >= 60)
 
-        # Doğal Dil İle Rasyonel Gerekçelendirme Metni (Açıklanabilir AI)
         thesis = (
             f"{ticker_raw} için hesaplanan hibrit AI Skoru {ai_score}/100 seviyesindedir. "
             f"Teknik analizde RSI 14 ({rsi_14:.1f}) ve MOST indikatörü pozitif eğilimi desteklerken, "
-            f"Temel bilançoya göre hesaplanan Adil Değer {currency}{fair_price} (%{upside} prim potansiyeli) seviyesindedir. "
-            f"Analist konsensüs hedef fiyatı ise {currency}{analyst_target} olarak görünmektedir."
+            f"Temel bilançoya göre hesaplanan Adil Değer {currency}{fair_price} (%{upside} prim potansiyeli) seviyesindedir."
         )
 
-        # Mumlar & Sparkline
         candles = []
         for idx, row in hist.tail(60).iterrows():
             candles.append({
@@ -462,9 +409,8 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
             })
 
         sparkline = [round(float(x), 2) for x in closes.tail(30).tolist()]
-
         mcap = info.get('marketCap')
-        mcap_str = f"₺{mcap / 1_000_000_000:.2f}B" if (mcap and market == "BIST") else (f"${mcap / 1_000_000_000:.2f}B" if mcap else f"₺{int(current_price * 40)}M")
+        mcap_str = f"₺{mcap / 1_000_000_000:.2f}B" if (mcap and market == "BIST") else f"₺{int(current_price * 40)}M"
 
         return {
             "id": ticker_raw.lower(),
@@ -475,7 +421,7 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
             "fairPrice": fair_price,
             "currency": currency,
             "change24h": round(change_pct, 2),
-            "valueScore": ai_score, # Nihai AI Skoru
+            "valueScore": ai_score,
             "technicalScore": technical_score,
             "fundamentalScore": fundamental_score,
             "newsScore": sentiment_score,
@@ -502,17 +448,13 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
                 "volMultiplier": vol_multiplier
             },
             "healthBreakdown": {
-                "profit": score_karlilik,
-                "fk": score_fk,
-                "pddd": score_pddd,
-                "favok": score_favok,
-                "netVarlik": score_net_varlik,
-                "borc": score_borc
+                "profit": score_karlilik, "fk": score_fk, "pddd": score_pddd,
+                "favok": score_favok, "netVarlik": score_net_varlik, "borc": score_borc
             },
             "supports": tech_levels["supports"],
             "resistances": tech_levels["resistances"],
             "analystTarget": analyst_target,
-            "summary": f"4 Disiplinli Deterministik Karar Motoru. F/K: {pe_str}, RSI: {rsi_14:.1f}",
+            "summary": f"4 Disiplinli Karar Motoru. F/K: {pe_str}, RSI: {rsi_14:.1f}",
             "aiThesis": thesis,
             "peRatio": pe_str,
             "marketCap": mcap_str,
@@ -524,15 +466,16 @@ def fetch_single_stock_real_data(ticker_raw: str, market: str) -> Optional[Dict[
         print(f"Error fetching data for {ticker_raw}: {e}")
         return None
 
-# ----------------────────────────────────────────────────────────---------
+# ----------------────────────────-----------------------------------------
 # BORSAYI TOPLU TARAMA MOTORU
-# ----------------────────────────────────────────────────────────---------
+# ----------------────────────────-----------------------------------------
 
 def execute_real_bulk_scan(market: str) -> List[Dict[str, Any]]:
     raw_tickers = BIST_ALL_TICKERS if market == "BIST" else get_us_tickers()
     results = []
 
-    with ThreadPoolExecutor(max_workers=15) as executor:
+    # Render ücretsiz sunucu hafızasını zorlamamak için iş parçacığı 10 ile sınırlandı
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(fetch_single_stock_real_data, ticker, market) for ticker in raw_tickers]
         for future in futures:
             res = future.result()
@@ -541,18 +484,17 @@ def execute_real_bulk_scan(market: str) -> List[Dict[str, Any]]:
 
     return sorted(results, key=lambda x: x['valueScore'], reverse=True)
 
-# ----------------────────────────────────────────────────────────---------
+# ----------------────────────────-----------------------------------------
 # API ENDPOINTLERİ
-# ----------------────────────────────────────────────────────────---------
+# ----------------────────────────-----------------------------------------
 
 @app.get("/api/tara")
 def borsayi_tara(piyasa: str = Query("BIST")):
-    """Canlı Borsa Tarama Endpoint'i"""
     target_market = "BIST" if "BIST" in piyasa.upper() else "US Markets"
     current_time = time.time()
 
     if (current_time - CACHE[target_market]["timestamp"]) > CACHE_TTL or not CACHE[target_market]["data"]:
-        print(f"[{target_market}] Canlı hisse verileri ve indikatörleri taranıyor...")
+        print(f"[{target_market}] Canlı hisse verileri taranıyor...")
         live_data = execute_real_bulk_scan(target_market)
         if live_data:
             CACHE[target_market]["data"] = live_data
@@ -567,88 +509,72 @@ def borsayi_tara(piyasa: str = Query("BIST")):
 
 @app.get("/api/hisse/{symbol}")
 def hisse_detay_getir(symbol: str, piyasa: str = Query("BIST")):
-    """Tek Bir Hisse İçin Anlık Derinlemesine Analiz Verisi"""
     target_market = "BIST" if "BIST" in piyasa.upper() else "US Markets"
     data = fetch_single_stock_real_data(symbol.upper(), target_market)
     if not data:
         return {"success": False, "message": "Hisse verisi bulunamadı."}
     return {"success": True, "data": data}
 
+@app.get("/api/news/{symbol}")
+def get_live_news(symbol: str):
+    news_items = []
+    if feedparser:
+        try:
+            rss_url = f"https://news.google.com/rss/search?q={symbol}+borsa+istanbul&hl=tr&gl=TR&ceid=TR:tr"
+            feed = feedparser.parse(rss_url)
+            for entry in feed.entries[:5]:
+                news_items.append({
+                    "title": entry.title,
+                    "link": entry.link,
+                    "pubDate": getattr(entry, 'published', 'Son Dakika'),
+                    "source": entry.source.title if hasattr(entry, 'source') else "BIST Haber"
+                })
+        except Exception as e:
+            print(f"News fetch error for {symbol}:", e)
+
+    return {"symbol": symbol, "news": news_items}
+
 @app.get("/api/haberler")
 def canli_piyasa_haberleri(query: str = Query("BIST Borsa Istanbul")):
-    """
-    Apify API (varsa) veya Google News BIST RSS / KAP akışı üzerinden 
-    canlı piyasa haberlerini çekip NLP duygu skorlaması yapan endpoint.
-    """
-    import os
-    import requests
-    import xml.etree.ElementTree as ET
-
-    apify_token = os.environ.get("APIFY_TOKEN")
     news_items = []
 
-    # 1. Apify Entegrasyonu (Eğer APIFY_TOKEN tanımlıysa Apify Actor çağrılır)
-    if apify_token:
-        try:
-            url = f"https://api.apify.com/v2/acts/apify~google-news-scraper/run-sync-get-dataset-items?token={apify_token}"
-            payload = {"queries": [query], "maxItems": 15}
-            res = requests.post(url, json=payload, timeout=5)
-            if res.status_code in [200, 201]:
-                data = res.json()
-                for idx, item in enumerate(data):
-                    news_items.append({
-                        "id": f"apify-{idx}",
-                        "ticker": "BIST",
-                        "title": item.get("title", ""),
-                        "timeAgo": "Anlık",
-                        "type": "positive" if "büyüme" in item.get("title","").lower() or "artış" in item.get("title","").lower() else "neutral",
-                        "impact": "HIGH",
-                        "content": item.get("snippet", item.get("title", ""))
-                    })
-        except Exception as e:
-            print("Apify news fetch fallback:", e)
+    # 1. Google News RSS Akışı
+    try:
+        rss_url = "https://news.google.com/rss/search?q=BIST+Borsa+Istanbul&hl=tr&gl=TR&ceid=TR:tr"
+        resp = requests.get(rss_url, timeout=4)
+        if resp.status_code == 200:
+            root = ET.fromstring(resp.content)
+            for i, item in enumerate(root.findall(".//item")[:15]):
+                title = item.find("title").text if item.find("title") is not None else ""
+                t_lower = title.lower()
+                
+                if any(w in t_lower for w in ["yüksel", "rekor", "kar", "büyüdü", "al", "artış", "anlaşma"]):
+                    n_type = "positive"
+                elif any(w in t_lower for w in ["düştü", "zarar", "düşüş", "geriledi", "risk", "sat"]):
+                    n_type = "negative"
+                else:
+                    n_type = "neutral"
 
-    # 2. Ücretsiz Google News RSS Akışı (Canlı BİST haberleri)
-    if not news_items:
-        try:
-            rss_url = "https://news.google.com/rss/search?q=BIST+Borsa+Istanbul&hl=tr&gl=TR&ceid=TR:tr"
-            resp = requests.get(rss_url, timeout=4)
-            if resp.status_code == 200:
-                root = ET.fromstring(resp.content)
-                for i, item in enumerate(root.findall(".//item")[:15]):
-                    title = item.find("title").text if item.find("title") is not None else ""
-                    t_lower = title.lower()
-                    if any(w in t_lower for w in ["yüksel", "rekor", "kar", "büyüdü", "al", "artış", "anlaşma"]):
-                        n_type = "positive"
-                    elif any(w in t_lower for w in ["düştü", "zarar", "düşüş", "geriledi", "risk", "sat"]):
-                        n_type = "negative"
-                    else:
-                        n_type = "neutral"
+                clean_title = title.split(" - ")[0] if " - " in title else title
+                source_name = title.split(" - ")[-1] if " - " in title else "Piyasa Akışı"
 
-                    clean_title = title.split(" - ")[0] if " - " in title else title
-                    source_name = title.split(" - ")[-1] if " - " in title else "Piyasa Akışı"
+                news_items.append({
+                    "id": f"rss-{i}",
+                    "ticker": "BIST",
+                    "title": clean_title,
+                    "timeAgo": "Son Dakika",
+                    "type": n_type,
+                    "impact": "HIGH" if n_type != "neutral" else "MED",
+                    "content": f"Kaynak: {source_name}"
+                })
+    except Exception as e:
+        print("RSS news fetch error:", e)
 
-                    news_items.append({
-                        "id": f"rss-{i}",
-                        "ticker": "BIST",
-                        "title": clean_title,
-                        "timeAgo": "Son Dakika",
-                        "type": n_type,
-                        "impact": "HIGH" if n_type != "neutral" else "MED",
-                        "content": f"Kaynak: {source_name}"
-                    })
-        except Exception as e:
-            print("RSS news fetch error:", e)
-
-    # 3. Yetersiz kalırsa zengin BİST haber akışı
-    if len(news_items) < 4:
+    # Fallback
+    if len(news_items) < 3:
         news_items = [
-            {"id": "n1", "ticker": "THYAO", "title": "THY Yolcu Sayısını Yıllık %14 Artırarak Rekor Kırdı", "timeAgo": "10d önce", "type": "positive", "impact": "HIGH", "content": "Türk Hava Yolları, dış hat yolcu doluluk oranının %84.5 seviyesine ulaştığını bildirdi."},
-            {"id": "n2", "ticker": "GARAN", "title": "Garanti BBVA 2. Çeyrek Net Karında %28 Artış Açıkladı", "timeAgo": "25d önce", "type": "positive", "impact": "HIGH", "content": "Banka özkaynak kârlılığını %38.2 seviyesinde tutarak sektör liderliğini korudu."},
-            {"id": "n3", "ticker": "EREGL", "title": "Erdemir Bingöl Maden Sahasında Üretime Başlıyor", "timeAgo": "45d önce", "type": "positive", "impact": "HIGH", "content": "Yıllık 3 milyon ton pelet üretim kapasiteli tesis ile ton maliyetlerinde $60 gerileme hedefleniyor."},
-            {"id": "n4", "ticker": "TUPRS", "title": "Tüpraş Temiz Enerji ve Yeşil Hidrojen Yatırımını Hızlandırdı", "timeAgo": "1s önce", "type": "positive", "impact": "MED", "content": "2030 sıfır karbon dönüşüm stratejisi kapsamında yenilenebilir tesis yatırımları sürüyor."},
-            {"id": "n5", "ticker": "ORGE", "title": "ORGE Enerji 185 Milyon TL Değerinde Yeni Sözleşme İmzaladı", "timeAgo": "2s önce", "type": "positive", "impact": "HIGH", "content": "Metro elektrik işleri projesi kapsamında 185 milyon TL + KDV tutarlı sözleşme imzalandı."},
-            {"id": "n6", "ticker": "ASELS", "title": "ASELSAN 45 Milyon Dolar Tutarında İhracat Anlaşması Yaptı", "timeAgo": "3s önce", "type": "positive", "impact": "HIGH", "content": "Uluslararası bir müşteri ile savunma sistemleri tedarikine yönelik $45M tutarlı anlaşma yapıldı."}
+            {"id": "n1", "ticker": "THYAO", "title": "THY Yolcu Sayısını Yıllık %14 Artırarak Rekor Kırdı", "timeAgo": "10d önce", "type": "positive", "impact": "HIGH", "content": "Türk Hava Yolları doluluk oranı %84.5 seviyesine ulaştı."},
+            {"id": "n2", "ticker": "GARAN", "title": "Garanti BBVA Net Karında Artış Açıkladı", "timeAgo": "25d önce", "type": "positive", "impact": "HIGH", "content": "Banka özkaynak kârlılığını %38.2 seviyesinde tuttu."}
         ]
 
     return {"status": "ok", "total": len(news_items), "news": news_items}
@@ -659,9 +585,14 @@ class ChatRequest(BaseModel):
 @app.post("/api/chat")
 def gemini_financial_chatbot(req: ChatRequest):
     return {
-        "reply": f"FinOS Karar Motoru: '{req.prompt}' sorunuz için 4-sütunlu analiz güncellenmiştir."
+        "reply": f"FinOS Karar Motoru: '{req.prompt}' sorunuz işlendi."
     }
 
+# ----------------────────────────-----------------------------------------
+# RENDER DİNAMİK PORT BAĞLANTISI (Deploy Hatasını Çözen Bölüm)
+# ----------------────────────────-----------------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Render'ın atadığı dinamik PORT okunur, yoksa varsayılan 8000 alınır
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
